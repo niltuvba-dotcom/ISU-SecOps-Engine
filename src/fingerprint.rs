@@ -1,180 +1,169 @@
-use std::net::SocketAddr;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::time::timeout;
-use serde::{Serialize, Deserialize};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::time::{timeout, Duration};
 use regex::Regex;
-use futures::stream::{self, StreamExt};
-use tokio::sync::mpsc;
+use serde::Serialize;
 
-/// Represents a successful service identification on a given target and port.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Clone)]
 pub struct FingerprintResult {
-    /// IP address or hostname of the scanned target.
-    pub target: String,
-    /// TCP port number.
     pub port: u16,
-    /// Connection state (usually "open").
     pub state: String,
-    /// Identified service name (e.g., SSH, HTTP).
     pub service: String,
-    /// Detected version string or "unknown".
     pub version: String,
 }
 
-/// Expands a single target string (IP, hostname, or CIDR) into a list of individual IP addresses.
-pub fn expand_target(target: &str) -> Vec<String> {
-    if let Ok(net) = target.parse::<ipnet::IpNet>() {
-        net.hosts().map(|h| h.to_string()).collect()
-    } else {
-        vec![target.to_string()]
+pub async fn run_fingerprint(target: &str, ports: Vec<u16>) -> anyhow::Result<()> {
+    let results = run_fingerprint_logic(target, ports).await?;
+
+    println!("{:<10} {:<15} {:<30}", "PORT", "STATE", "SERVICE/VERSION");
+    println!("{}", "-".repeat(55));
+
+    for res in results {
+        println!(
+            "{:<10} {:<15} {}/{}",
+            format!("{}/tcp", res.port),
+            res.state,
+            res.service,
+            res.version
+        );
     }
-}
-
-/// Orchestrates an asynchronous scan for multiple targets and ports with controlled concurrency.
-/// 
-/// Results are streamed through an unbounded mpsc channel for real-time reporting.
-pub async fn run_fingerprint_streaming(
-    target: &str,
-    ports: Vec<u16>,
-    concurrency: usize,
-    timeout_sec: u64,
-    tx: mpsc::UnboundedSender<FingerprintResult>,
-) -> anyhow::Result<()> {
-    let targets = expand_target(target);
-    let mut tasks = vec![];
-
-    for t in targets {
-        for &p in &ports {
-            tasks.push((t.clone(), p));
-        }
-    }
-
-    let stream = stream::iter(tasks).map(|(t, p)| {
-        let tx = tx.clone();
-        async move {
-            if let Ok(Some(res)) = fingerprint_port(&t, p, timeout_sec).await {
-                let _ = tx.send(res);
-            }
-        }
-    }).buffer_unordered(concurrency);
-
-    stream.collect::<Vec<_>>().await;
     Ok(())
 }
 
-/// Attempts to connect to a specific port and identify its service through banner grabbing.
-pub async fn fingerprint_port(target: &str, port: u16, timeout_sec: u64) -> anyhow::Result<Option<FingerprintResult>> {
-    let addr = format!("{}:{}", target, port);
-    let socket_addr: SocketAddr = addr.parse().or_else(|_| {
-        // Simple hostname resolution attempt for basic cases
-        std::net::ToSocketAddrs::to_socket_addrs(&addr)
-            .map(|mut iter| iter.next().unwrap())
-    })?;
+pub async fn run_fingerprint_logic(target: &str, ports: Vec<u16>) -> anyhow::Result<Vec<FingerprintResult>> {
+    let mut tasks = vec![];
 
-    let connect_timeout = Duration::from_secs(timeout_sec);
-    
-    // Phase 1: Connection
-    let mut stream = match timeout(connect_timeout, TcpStream::connect(&socket_addr)).await {
-        Ok(Ok(s)) => s,
-        _ => return Ok(None),
-    };
+    for port in ports.clone() {
+        let target_clone = target.to_string();
+        tasks.push(tokio::spawn(async move {
+            let res = fingerprint_port(&target_clone, port).await;
+            (port, res)
+        }));
+    }
 
-    // Phase 2: Banner Grabbing
-    let _ = stream.write_all(b"\r\n").await; // Gentle nudge for some services
-    
-    let mut banner_buffer = [0u8; 1024];
-    let read_timeout = Duration::from_secs(2);
-    
-    let banner = match timeout(read_timeout, stream.read(&mut banner_buffer)).await {
-        Ok(Ok(n)) if n > 0 => {
-            String::from_utf8_lossy(&banner_buffer[..n]).to_string()
-        }
-        _ => {
-            // Attempt active probe if no immediate banner
-            let mut probe_buffer = [0u8; 1024];
-            let _ = stream.write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n").await;
-            match timeout(read_timeout, stream.read(&mut probe_buffer)).await {
-                Ok(Ok(n)) if n > 0 => String::from_utf8_lossy(&probe_buffer[..n]).to_string(),
-                _ => "unknown".to_string(),
+    let mut results = vec![];
+
+    for task in tasks {
+        let (port, res) = task.await.unwrap();
+        match res {
+            Ok(Some((service, version))) => {
+                results.push(FingerprintResult {
+                    port,
+                    state: "open".to_string(),
+                    service,
+                    version,
+                });
+            }
+            Ok(None) => {
+                results.push(FingerprintResult {
+                    port,
+                    state: "open".to_string(),
+                    service: "unknown".to_string(),
+                    version: "unknown".to_string(),
+                });
+            }
+            Err(_) => {
+                // optionally handle closed ports
             }
         }
-    };
+    }
 
-    let (service, version) = if banner == "unknown" {
-        ("unknown".to_string(), "unknown".to_string())
-    } else {
-        identify_service(&banner).unwrap_or(("unknown".to_string(), "unknown".to_string()))
-    };
+    // Sort by port number
+    results.sort_by_key(|r| r.port);
 
-    Ok(Some(FingerprintResult {
-        target: target.to_string(),
-        port,
-        state: "open".to_string(),
-        service,
-        version,
-    }))
+    Ok(results)
 }
+async fn fingerprint_port(target: &str, port: u16) -> anyhow::Result<Option<(String, String)>> {
+    let addr = format!("{}:{}", target, port);
+    
+    // Connect with a 3-second timeout
+    let stream_result = timeout(Duration::from_secs(3), TcpStream::connect(&addr)).await;
+    
+    let mut stream = match stream_result {
+        Ok(Ok(s)) => s,
+        _ => return Err(anyhow::anyhow!("Connection failed or timeout")),
+    };
 
-/// Identifies common network services and extracts versioning information using regex patterns.
-pub fn identify_service(banner: &str) -> Option<(String, String)> {
-    let patterns = [
-        ("SSH", r"SSH-(\d+\.\d+)-"),
-        ("HTTP", r"HTTP/\d+\.\d+\s+(\d+)"),
-        ("Redis", r"redis_version:(\d+\.\d+\.\d+)"),
-        ("PostgreSQL", r"PostgreSQL"),
-        ("SMTP", r"220.*SMTP"),
-        ("FTP", r"220.*FTP"),
-    ];
+    // Try to read a passive banner (e.g. SSH, FTP send banner upon connection)
+    let mut buffer = [0; 4096];
+    let read_result = timeout(Duration::from_secs(3), stream.read(&mut buffer)).await;
+    
+    let mut response_text = String::new();
+    
+    if let Ok(Ok(n)) = read_result {
+        if n > 0 {
+            response_text = String::from_utf8_lossy(&buffer[..n]).to_string();
+        }
+    }
 
-    for (name, pattern) in patterns {
-        let re = Regex::new(pattern).ok()?;
-        if let Some(caps) = re.captures(banner) {
-            let version = caps.get(1).map(|m| m.as_str()).unwrap_or("unknown").to_string();
-            return Some((name.to_string(), version));
+    // If no passive banner, send an active probe (e.g. HTTP requires a request first)
+    if response_text.is_empty() || response_text.trim().is_empty() {
+        let http_probe = b"GET / HTTP/1.0\r\n\r\n";
+        let _ = stream.write_all(http_probe).await;
+        
+        let read_result = timeout(Duration::from_secs(3), stream.read(&mut buffer)).await;
+        if let Ok(Ok(n)) = read_result {
+            if n > 0 {
+                response_text = String::from_utf8_lossy(&buffer[..n]).to_string();
+            }
         }
     }
     
-    None
+    if response_text.is_empty() {
+        return Ok(None);
+    }
+
+    // Match signature against collected banner
+    Ok(match_signature(&response_text))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_expand_target_single_ip() {
-        let targets = expand_target("127.0.0.1");
-        assert_eq!(targets.len(), 1);
-        assert_eq!(targets[0], "127.0.0.1");
+fn match_signature(banner: &str) -> Option<(String, String)> {
+    // 1. SSH Signature
+    if let Ok(re) = Regex::new(r"(?i)^SSH-([\d.]+)-([^\r\n]+)") {
+        if let Some(caps) = re.captures(banner) {
+            return Some(("SSH".to_string(), caps[2].to_string()));
+        }
     }
 
-    #[test]
-    fn test_expand_target_cidr() {
-        let targets = expand_target("192.168.1.0/30");
-        // /30 has 2 usable hosts (.1, .2) in some implementations, 
-        // but ipnet hosts() covers all assignable IPs.
-        assert_eq!(targets.len(), 2); 
+    // 2. HTTP Signature
+    if banner.contains("HTTP/1.") || banner.contains("HTTP/2") || banner.contains("HTTP/0.") {
+        let mut version = "unknown".to_string();
+        if let Ok(re) = Regex::new(r"(?i)Server:\s*([^\r\n]+)") {
+            if let Some(caps) = re.captures(banner) {
+                version = caps[1].to_string();
+            }
+        }
+        return Some(("HTTP".to_string(), version));
     }
 
-    #[test]
-    fn test_identify_service_ssh() {
-        let banner = "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.5";
-        let res = identify_service(banner);
-        assert!(res.is_some());
-        let (name, ver) = res.unwrap();
-        assert_eq!(name, "SSH");
-        assert_eq!(ver, "2.0");
+    // 3. FTP Signature
+    if let Ok(re) = Regex::new(r"(?i)^220[- ]([^\r\n]+)") {
+        if let Some(caps) = re.captures(banner) {
+            return Some(("FTP".to_string(), caps[1].to_string()));
+        }
+    }
+    
+    // 4. MySQL Signature Heuristic
+    // MySQL's greeting packet is binary but contains human-readable version like "5.5.5-10.4.24-MariaDB"
+    if banner.contains("MariaDB") || banner.contains("mysql_native_password") || banner.contains("caching_sha2_password") {
+        if let Ok(re) = Regex::new(r"([\d]+\.[\d]+\.[\d]+(-MariaDB)?)") {
+            if let Some(caps) = re.captures(banner) {
+                return Some(("MySQL".to_string(), caps[1].to_string()));
+            }
+        }
+        return Some(("MySQL".to_string(), "unknown".to_string()));
     }
 
-    #[test]
-    fn test_identify_service_http() {
-        let banner = "HTTP/1.1 200 OK\r\nServer: nginx";
-        let res = identify_service(banner);
-        assert!(res.is_some());
-        let (name, ver) = res.unwrap();
-        assert_eq!(name, "HTTP");
-        assert_eq!(ver, "200");
+    // 5. Fallback - show truncated banner if it's text
+    let clean_banner = banner.lines().next().unwrap_or("").trim().to_string();
+    if !clean_banner.is_empty() && clean_banner.chars().all(|c| c.is_ascii_graphic() || c.is_ascii_whitespace()) {
+        let display_banner = if clean_banner.len() > 30 {
+            format!("{}...", &clean_banner[..30])
+        } else {
+            clean_banner
+        };
+        return Some(("unknown".to_string(), display_banner));
     }
+
+    None
 }

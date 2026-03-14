@@ -1,11 +1,5 @@
 # Clippy configuration
-# Deny specific names
-disallowed-names = ["foo", "bar", "baz"]
-
-# Complexity thresholds
-# cognitive-complexity is the modern replacement for cyclomatic
 cognitive-complexity-threshold = 30
-
-# Function limitations
+cyclomatic-complexity-threshold = 30
 too-many-arguments-threshold = 8
 too-many-lines-threshold = 500

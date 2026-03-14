@@ -1,5 +1,5 @@
 max_width = 100
-edition = "2021"
+edition = "2024"
 format_strings = true
 format_macro_matchers = true
 reorder_impl_items = true

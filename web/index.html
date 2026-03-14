@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aetheris Engine | Professional Recon Dashboard</title>
+    <title>SEC-OPS Engine</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -15,98 +15,32 @@
     
     <div class="container glass-panel">
         <header>
-            <div class="logo-container">
-                <svg class="logo-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M12 22V12" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M12 12L21 7" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M12 12L3 7" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <defs>
-                        <linearGradient id="logo-gradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                            <stop stop-color="#00f3ff"/>
-                            <stop offset="1" stop-color="#7000ff"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
-            </div>
-            <h1>AETHERIS <span class="accent">ENGINE</span></h1>
+            <h1>SEC-OPS <span class="neon-text">ENGINE</span></h1>
             <p>Advanced Service Fingerprinting Dashboard</p>
         </header>
 
         <main>
-            <div id="scan-stats" class="scan-stats hidden">
-                <div class="stat-card">
-                    <span class="stat-label">Hosts Scanned</span>
-                    <span id="stat-hosts" class="stat-value">0</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Open Ports</span>
-                    <span id="stat-ports" class="stat-value">0</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Unique Services</span>
-                    <span id="stat-services" class="stat-value">0</span>
-                </div>
-            </div>
- 
-            <div id="scan-analytics" class="scan-analytics hidden">
-                <div class="analytics-card">
-                    <h4>Service Distribution</h4>
-                    <div id="service-distribution-list" class="service-list">
-                        <!-- Bars injected here -->
-                    </div>
-                </div>
-            </div>
-
             <form id="scan-form">
                 <div class="input-group">
                     <label for="target">Target (IP or Domain)</label>
                     <input type="text" id="target" placeholder="e.g. scanme.nmap.org" required value="scanme.nmap.org">
                 </div>
                 <div class="input-group">
-                    <label>Ports (Comma separated)</label>
-                    <input type="text" id="ports" value="22,80,443" placeholder="e.g. 21,22,80,443,3306">
-                    <div class="profile-presets">
-                        <button type="button" class="preset-btn" data-ports="21,22,23,25,53,80,110,143,443,3306,5432,6379,8080">Popular</button>
-                        <button type="button" class="preset-btn" data-ports="80,443,8080,8443">Web</button>
-                        <button type="button" class="preset-btn" data-ports="22,23,3389">Remote</button>
-                        <button type="button" class="preset-btn" data-ports="3306,5432,6379,27017">DB</button>
-                    </div>
+                    <label for="ports">Ports (Comma separated)</label>
+                    <input type="text" id="ports" placeholder="e.g. 22,80,443,3306" required value="22,80,443">
                 </div>
                 <button type="submit" id="btn-scan" class="primary-btn">
                     <span class="btn-text">Initiate Scan</span>
                     <div class="loader hidden"></div>
                 </button>
             </form>
- 
-            <div id="scan-progress-container" class="progress-bar-container hidden">
-                <div class="progress-info">
-                    <span id="progress-text">Scanning targets...</span>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <div class="progress-track">
-                    <div id="progress-fill" class="progress-fill"></div>
-                </div>
-                <div id="live-log-status" class="live-log">Ready to scan...</div>
-            </div>
 
             <div id="results-container" class="hidden">
-                <div class="results-header">
-                    <h2>Scan Results</h2>
-                    <div class="search-box">
-                        <input type="text" id="search-input" placeholder="Search targets, ports, or services...">
-                    </div>
-                    <div class="export-actions">
-                        <button id="btn-export-json" class="secondary-btn">JSON</button>
-                        <button id="btn-export-csv" class="secondary-btn">CSV</button>
-                        <button id="btn-export-pdf" class="secondary-btn">PDF Report</button>
-                    </div>
-                </div>
+                <h2>Scan Results</h2>
                 <div class="table-wrapper">
                     <table id="results-table">
                         <thead>
                             <tr>
-                                <th>Target</th>
                                 <th>Port</th>
                                 <th>State</th>
                                 <th>Service</th>
@@ -121,13 +55,6 @@
             </div>
             
             <div id="error-message" class="hidden"></div>
- 
-            <div id="history-container" class="history-panel">
-                <h3>Recent Activity</h3>
-                <div id="history-list" class="history-list">
-                    <!-- History items injected here -->
-                </div>
-            </div>
         </main>
     </div>
 

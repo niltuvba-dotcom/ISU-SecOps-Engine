@@ -1,4 +1,4 @@
-# Justfile - Aetheris Engine Professional Command Runner
+# Justfile - Command runner for ISU-SecOps-Engine development
 
 _default:
     @just --list
@@ -8,30 +8,26 @@ fmt:
     cargo fmt --all
     taplo format
 
-# Run clippy lints with strict security rules
+# Run clippy lints
 lint:
     cargo clippy --all-targets -- -D warnings
 
-# Run all unit tests
+# Run tests
 test:
     cargo test --workspace
 
-# Check for security vulnerabilities in dependencies
+# Check for security vulnerabilities and licenses
 audit:
     cargo deny check
 
-# Build the project in release mode for maximum performance
+# Build the project
 build:
-    cargo build --release
+    cargo build --workspace
 
-# Quick scan of localhost (Terminal focus)
-scan target='127.0.0.1' ports='1-1000':
-    cargo run -- pentest fingerprint {{target}} --ports {{ports}}
+# Database schema migrations refresh (SeaORM)
+db-refresh:
+    sea-orm-cli migrate refresh -d migration
 
 # Run the full local CI gate manually
 ci: fmt lint audit test build
-    @echo "✅ Aetheris Engine: All local CI checks passed! Deployment ready."
-
-# Start the Web Dashboard companion
-web port='8080':
-    cargo run -- web --port {{port}}
+    @echo "✅ All local CI checks passed!"
