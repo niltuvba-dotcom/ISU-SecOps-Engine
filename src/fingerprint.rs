@@ -98,13 +98,24 @@ async fn fingerprint_port(target: &str, port: u16) -> anyhow::Result<Option<(Str
 
     // If no passive banner, send an active probe (e.g. HTTP requires a request first)
     if response_text.is_empty() || response_text.trim().is_empty() {
-        let http_probe = b"GET / HTTP/1.0\r\n\r\n";
-        let _ = stream.write_all(http_probe).await;
-        
-        let read_result = timeout(Duration::from_secs(3), stream.read(&mut buffer)).await;
-        if let Ok(Ok(n)) = read_result {
-            if n > 0 {
-                response_text = String::from_utf8_lossy(&buffer[..n]).to_string();
+        let probes = [
+            ("HTTP", b"GET / HTTP/1.0\r\n\r\n".as_slice()),
+            ("Redis", b"PING\r\n".as_slice()),
+            ("Redis_Info", b"INFO\r\n".as_slice()),
+        ];
+
+        for (_name, probe) in probes {
+            let _ = stream.write_all(probe).await;
+            
+            let read_result = timeout(Duration::from_secs(2), stream.read(&mut buffer)).await;
+            if let Ok(Ok(n)) = read_result {
+                if n > 0 {
+                    let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                    if !text.trim().is_empty() {
+                        response_text.push_str(&text);
+                        break;
+                    }
+                }
             }
         }
     }
@@ -138,12 +149,48 @@ fn match_signature(banner: &str) -> Option<(String, String)> {
 
     // 3. FTP Signature
     if let Ok(re) = Regex::new(r"(?i)^220[- ]([^\r\n]+)") {
-        if let Some(caps) = re.captures(banner) {
-            return Some(("FTP".to_string(), caps[1].to_string()));
+        if banner.to_uppercase().contains("FTP") || banner.len() > 10 {
+             if let Some(caps) = re.captures(banner) {
+                return Some(("FTP".to_string(), caps[1].to_string()));
+            }
         }
     }
+
+    // 4. SMTP Signature
+    if let Ok(re) = Regex::new(r"(?i)^220\s+([^\r\n ]+)\s+ESMTP") {
+        if let Some(caps) = re.captures(banner) {
+            return Some(("SMTP".to_string(), caps[1].to_string()));
+        }
+    }
+
+    // 5. POP3 Signature
+    if banner.starts_with("+OK") {
+        let version = banner.split_whitespace().nth(1).unwrap_or("unknown").to_string();
+        return Some(("POP3".to_string(), version));
+    }
+
+    // 6. IMAP Signature
+    if banner.contains("* OK") && banner.to_uppercase().contains("IMAP") {
+        return Some(("IMAP".to_string(), "unknown".to_string()));
+    }
+
+    // 7. Redis Signature
+    if banner.starts_with("+PONG") || banner.contains("redis_version") {
+        let mut version = "unknown".to_string();
+        if let Ok(re) = Regex::new(r"redis_version:([^\r\n]+)") {
+            if let Some(caps) = re.captures(banner) {
+                version = caps[1].to_string();
+            }
+        }
+        return Some(("Redis".to_string(), version));
+    }
+
+    // 8. Postgres (Heuristic)
+    if banner.contains("PostgreSQL") || (banner.len() >= 5 && banner.as_bytes()[0] == b'R') {
+        return Some(("Postgres".to_string(), "unknown".to_string()));
+    }
     
-    // 4. MySQL Signature Heuristic
+    // 9. MySQL Signature Heuristic
     // MySQL's greeting packet is binary but contains human-readable version like "5.5.5-10.4.24-MariaDB"
     if banner.contains("MariaDB") || banner.contains("mysql_native_password") || banner.contains("caching_sha2_password") {
         if let Ok(re) = Regex::new(r"([\d]+\.[\d]+\.[\d]+(-MariaDB)?)") {
