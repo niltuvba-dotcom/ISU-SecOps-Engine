@@ -3,9 +3,12 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::{timeout, Duration};
 use regex::Regex;
 use serde::Serialize;
+use ipnet::IpNet;
+use std::str::FromStr;
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct FingerprintResult {
+    pub target: String,
     pub port: u16,
     pub state: String,
     pub service: String,
@@ -15,12 +18,13 @@ pub struct FingerprintResult {
 pub async fn run_fingerprint(target: &str, ports: Vec<u16>) -> anyhow::Result<()> {
     let results = run_fingerprint_logic(target, ports).await?;
 
-    println!("{:<10} {:<15} {:<30}", "PORT", "STATE", "SERVICE/VERSION");
-    println!("{}", "-".repeat(55));
-
+    println!("{:<20} {:<10} {:<15} {:<30}", "TARGET", "PORT", "STATE", "SERVICE/VERSION");
+    println!("{}", "-".repeat(75));
+ 
     for res in results {
         println!(
-            "{:<10} {:<15} {}/{}",
+            "{:<20} {:<10} {:<15} {}/{}",
+            res.target,
             format!("{}/tcp", res.port),
             res.state,
             res.service,
@@ -30,24 +34,28 @@ pub async fn run_fingerprint(target: &str, ports: Vec<u16>) -> anyhow::Result<()
     Ok(())
 }
 
-pub async fn run_fingerprint_logic(target: &str, ports: Vec<u16>) -> anyhow::Result<Vec<FingerprintResult>> {
+pub async fn run_fingerprint_logic(target_input: &str, ports: Vec<u16>) -> anyhow::Result<Vec<FingerprintResult>> {
+    let targets = expand_target(target_input);
     let mut tasks = vec![];
-
-    for port in ports.clone() {
-        let target_clone = target.to_string();
-        tasks.push(tokio::spawn(async move {
-            let res = fingerprint_port(&target_clone, port).await;
-            (port, res)
-        }));
+ 
+    for target in targets {
+        for port in ports.clone() {
+            let target_clone = target.clone();
+            tasks.push(tokio::spawn(async move {
+                let res = fingerprint_port(&target_clone, port).await;
+                (target_clone, port, res)
+            }));
+        }
     }
-
+ 
     let mut results = vec![];
-
+ 
     for task in tasks {
-        let (port, res) = task.await.unwrap();
+        let (target, port, res) = task.await.unwrap();
         match res {
             Ok(Some((service, version))) => {
                 results.push(FingerprintResult {
+                    target,
                     port,
                     state: "open".to_string(),
                     service,
@@ -56,6 +64,7 @@ pub async fn run_fingerprint_logic(target: &str, ports: Vec<u16>) -> anyhow::Res
             }
             Ok(None) => {
                 results.push(FingerprintResult {
+                    target,
                     port,
                     state: "open".to_string(),
                     service: "unknown".to_string(),
@@ -67,12 +76,23 @@ pub async fn run_fingerprint_logic(target: &str, ports: Vec<u16>) -> anyhow::Res
             }
         }
     }
-
-    // Sort by port number
-    results.sort_by_key(|r| r.port);
-
+ 
+    // Sort by target then port number
+    results.sort_by(|a, b| {
+        a.target.cmp(&b.target).then(a.port.cmp(&b.port))
+    });
+ 
     Ok(results)
 }
+
+fn expand_target(input: &str) -> Vec<String> {
+    if let Ok(net) = IpNet::from_str(input) {
+        net.hosts().map(|ip| ip.to_string()).collect()
+    } else {
+        vec![input.to_string()]
+    }
+}
+
 async fn fingerprint_port(target: &str, port: u16) -> anyhow::Result<Option<(String, String)>> {
     let addr = format!("{}:{}", target, port);
     

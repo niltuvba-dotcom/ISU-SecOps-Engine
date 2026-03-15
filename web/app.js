@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const stateBadge = item.state === 'open' ? 'badge badge-open' : 'badge';
 
                     tr.innerHTML = `
+                        <td>${item.target}</td>
                         <td>${item.port}/tcp</td>
                         <td><span class="${stateBadge}">${item.state}</span></td>
                         <td style="font-weight: 600;">${item.service}</td>
