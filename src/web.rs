@@ -19,6 +19,8 @@ struct Asset;
 pub struct FingerprintRequest {
     pub target: String,
     pub ports: String,
+    pub concurrency: Option<usize>,
+    pub timeout: Option<u64>,
 }
 
 pub async fn start_server(port: u16) -> anyhow::Result<()> {
@@ -43,7 +45,10 @@ async fn api_fingerprint(Json(payload): Json<FingerprintRequest>) -> impl IntoRe
 
     match parsed_ports {
         Ok(ports) => {
-            match fingerprint::run_fingerprint_logic(&payload.target, ports).await {
+            let concurrency = payload.concurrency.unwrap_or(100);
+            let timeout_sec = payload.timeout.unwrap_or(3);
+            
+            match fingerprint::run_fingerprint_logic(&payload.target, ports, concurrency, timeout_sec).await {
                 Ok(results) => (StatusCode::OK, Json(results)).into_response(),
                 Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)).into_response(),
             }

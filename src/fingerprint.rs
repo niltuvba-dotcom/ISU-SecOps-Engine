@@ -1,6 +1,8 @@
 use tokio::net::TcpStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::{timeout, Duration};
+use tokio::sync::Semaphore;
+use std::sync::Arc;
 use regex::Regex;
 use serde::Serialize;
 use ipnet::IpNet;
@@ -15,8 +17,8 @@ pub struct FingerprintResult {
     pub version: String,
 }
 
-pub async fn run_fingerprint(target: &str, ports: Vec<u16>) -> anyhow::Result<()> {
-    let results = run_fingerprint_logic(target, ports).await?;
+pub async fn run_fingerprint(target: &str, ports: Vec<u16>, concurrency: usize, timeout_sec: u64) -> anyhow::Result<()> {
+    let results = run_fingerprint_logic(target, ports, concurrency, timeout_sec).await?;
 
     println!("{:<20} {:<10} {:<15} {:<30}", "TARGET", "PORT", "STATE", "SERVICE/VERSION");
     println!("{}", "-".repeat(75));
@@ -34,15 +36,23 @@ pub async fn run_fingerprint(target: &str, ports: Vec<u16>) -> anyhow::Result<()
     Ok(())
 }
 
-pub async fn run_fingerprint_logic(target_input: &str, ports: Vec<u16>) -> anyhow::Result<Vec<FingerprintResult>> {
+pub async fn run_fingerprint_logic(
+    target_input: &str,
+    ports: Vec<u16>,
+    concurrency: usize,
+    timeout_sec: u64,
+) -> anyhow::Result<Vec<FingerprintResult>> {
     let targets = expand_target(target_input);
     let mut tasks = vec![];
+    let semaphore = Arc::new(Semaphore::new(concurrency));
  
     for target in targets {
         for port in ports.clone() {
             let target_clone = target.clone();
+            let sem_clone = semaphore.clone();
             tasks.push(tokio::spawn(async move {
-                let res = fingerprint_port(&target_clone, port).await;
+                let _permit = sem_clone.acquire().await.unwrap();
+                let res = fingerprint_port(&target_clone, port, timeout_sec).await;
                 (target_clone, port, res)
             }));
         }
@@ -93,20 +103,20 @@ fn expand_target(input: &str) -> Vec<String> {
     }
 }
 
-async fn fingerprint_port(target: &str, port: u16) -> anyhow::Result<Option<(String, String)>> {
+async fn fingerprint_port(target: &str, port: u16, timeout_sec: u64) -> anyhow::Result<Option<(String, String)>> {
     let addr = format!("{}:{}", target, port);
     
-    // Connect with a 3-second timeout
-    let stream_result = timeout(Duration::from_secs(3), TcpStream::connect(&addr)).await;
+    // Connect with user-defined timeout
+    let stream_result = timeout(Duration::from_secs(timeout_sec), TcpStream::connect(&addr)).await;
     
     let mut stream = match stream_result {
         Ok(Ok(s)) => s,
         _ => return Err(anyhow::anyhow!("Connection failed or timeout")),
     };
-
-    // Try to read a passive banner (e.g. SSH, FTP send banner upon connection)
+ 
+    // Try to read a passive banner
     let mut buffer = [0; 4096];
-    let read_result = timeout(Duration::from_secs(3), stream.read(&mut buffer)).await;
+    let read_result = timeout(Duration::from_secs(timeout_sec), stream.read(&mut buffer)).await;
     
     let mut response_text = String::new();
     

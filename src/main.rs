@@ -36,6 +36,14 @@ enum PentestCommands {
         /// Ports to scan (comma separated, e.g., 22,80,443,3306)
         #[arg(long)]
         ports: String,
+ 
+        /// Number of concurrent scans
+        #[arg(long, default_value_t = 100)]
+        concurrency: usize,
+ 
+        /// Timeout in seconds for each port scan
+        #[arg(long, default_value_t = 3)]
+        timeout: u64,
     },
 }
 
@@ -45,8 +53,8 @@ async fn main() -> anyhow::Result<()> {
 
     match &cli.command {
         Commands::Pentest { command } => match command {
-            PentestCommands::Fingerprint { target, ports } => {
-                println!("Starting fingerprinting on {} for ports: {}", target, ports);
+            PentestCommands::Fingerprint { target, ports, concurrency, timeout } => {
+                println!("Starting fingerprinting on {} for ports: {} (Concurrency: {}, Timeout: {}s)", target, ports, concurrency, timeout);
                 
                 let parsed_ports: Result<Vec<u16>, _> = ports.split(',')
                     .map(|p| p.trim().parse::<u16>())
@@ -54,7 +62,7 @@ async fn main() -> anyhow::Result<()> {
                 
                 match parsed_ports {
                     Ok(p) => {
-                        if let Err(e) = fingerprint::run_fingerprint(target, p).await {
+                        if let Err(e) = fingerprint::run_fingerprint(target, p, *concurrency, *timeout).await {
                             eprintln!("Error running fingerprint: {}", e);
                         }
                     }
