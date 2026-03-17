@@ -156,6 +156,28 @@ input:focus {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
 }
+.export-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
 .results-header {
     display: flex;
     justify-content: space-between;

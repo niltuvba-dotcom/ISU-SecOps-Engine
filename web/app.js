@@ -8,6 +8,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let scanResults = [];
     const searchInput = document.getElementById('search-input');
+    const btnExportJson = document.getElementById('btn-export-json');
+    const btnExportCsv = document.getElementById('btn-export-csv');
+ 
+    btnExportJson.addEventListener('click', () => {
+        if (scanResults.length === 0) return;
+        const blob = new Blob([JSON.stringify(scanResults, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `secops_scan_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    });
+ 
+    btnExportCsv.addEventListener('click', () => {
+        if (scanResults.length === 0) return;
+        const headers = ['Target', 'Port', 'State', 'Service', 'Version'];
+        const rows = scanResults.map(r => [r.target, r.port, r.state, r.service, r.version].join(','));
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `secops_scan_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+    });
  
     searchInput.addEventListener('input', () => {
         const query = searchInput.value.toLowerCase();
