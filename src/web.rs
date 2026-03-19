@@ -1,13 +1,15 @@
 use axum::{
-    extract::Json,
+    extract::{Json, ws::{WebSocketUpgrade, WebSocket, Message}},
     response::{IntoResponse, Response},
     routing::{get, post},
     Router, http::{StatusCode, header, Uri},
 };
+use futures::{sink::SinkExt, stream::StreamExt};
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
+use tokio::sync::mpsc;
 
 use crate::fingerprint;
 
@@ -26,6 +28,7 @@ pub struct FingerprintRequest {
 pub async fn start_server(port: u16) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/api/fingerprint", post(api_fingerprint))
+        .route("/api/ws/fingerprint", get(ws_handler))
         .fallback(static_handler);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -36,6 +39,43 @@ pub async fn start_server(port: u16) -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    ws.on_upgrade(handle_socket)
+}
+
+async fn handle_socket(mut socket: WebSocket) {
+    if let Some(Ok(Message::Text(text))) = socket.next().await {
+        if let Ok(payload) = serde_json::from_str::<FingerprintRequest>(&text) {
+            let parsed_ports: Result<Vec<u16>, _> = payload.ports.split(',')
+                .map(|p| p.trim().parse::<u16>())
+                .collect();
+
+            if let Ok(ports) = parsed_ports {
+                let concurrency = payload.concurrency.unwrap_or(100);
+                let timeout_sec = payload.timeout.unwrap_or(3);
+                let (tx, mut rx) = mpsc::unbounded_channel();
+
+                // Start scanning in background
+                tokio::spawn(async move {
+                    let _ = fingerprint::run_fingerprint_streaming(&payload.target, ports, concurrency, timeout_sec, tx).await;
+                });
+
+                // Stream results back to socket
+                while let Some(res) = rx.recv().await {
+                    if let Ok(json) = serde_json::json!(res).to_string().try_into() {
+                        if socket.send(Message::Text(json)).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+                
+                // Send completion message
+                let _ = socket.send(Message::Text("DONE".into())).await;
+            }
+        }
+    }
 }
 
 async fn api_fingerprint(Json(payload): Json<FingerprintRequest>) -> impl IntoResponse {

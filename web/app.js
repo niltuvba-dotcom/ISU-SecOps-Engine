@@ -78,31 +78,56 @@ document.addEventListener('DOMContentLoaded', () => {
         loader.classList.remove('hidden');
         form.querySelector('button').disabled = true;
         searchInput.value = ''; // Reset search
+        
+        scanResults = [];
+        renderTable(scanResults);
+        resultsContainer.classList.remove('hidden');
  
         try {
-            const response = await fetch('/api/fingerprint', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ target, ports })
-            });
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/ws/fingerprint`;
+            const socket = new WebSocket(wsUrl);
  
-            if (!response.ok) {
-                throw new Error(`Server returned ${response.status}: ${await response.text()}`);
-            }
+            socket.onopen = () => {
+                socket.send(JSON.stringify({ target, ports }));
+            };
  
-            scanResults = await response.json();
-            renderTable(scanResults);
-            resultsContainer.classList.remove('hidden');
+            socket.onmessage = (event) => {
+                if (event.data === 'DONE') {
+                    socket.close();
+                    finishScan();
+                    return;
+                }
+ 
+                try {
+                    const result = JSON.parse(event.data);
+                    scanResults.push(result);
+                    // Sort locally as results arrive
+                    scanResults.sort((a, b) => a.target.localeCompare(b.target) || a.port - b.port);
+                    renderTable(scanResults);
+                } catch (err) {
+                    console.error("Error parsing WS message:", err);
+                }
+            };
+ 
+            socket.onerror = (error) => {
+                throw new Error("WebSocket error occurred.");
+            };
+ 
+            socket.onclose = () => {
+                finishScan();
+            };
  
         } catch (error) {
             errorMessage.textContent = error.message;
             errorMessage.classList.remove('hidden');
-        } finally {
-            btnText.textContent = 'Initiate Scan';
-            loader.classList.add('hidden');
-            form.querySelector('button').disabled = false;
+            finishScan();
         }
     });
+ 
+    function finishScan() {
+        btnText.textContent = 'Initiate Scan';
+        loader.classList.add('hidden');
+        form.querySelector('button').disabled = false;
+    }
 });

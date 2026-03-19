@@ -1,7 +1,7 @@
 use tokio::net::TcpStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::{timeout, Duration};
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, mpsc};
 use std::sync::Arc;
 use regex::Regex;
 use serde::Serialize;
@@ -42,57 +42,77 @@ pub async fn run_fingerprint_logic(
     concurrency: usize,
     timeout_sec: u64,
 ) -> anyhow::Result<Vec<FingerprintResult>> {
-    let targets = expand_target(target_input);
-    let mut tasks = vec![];
-    let semaphore = Arc::new(Semaphore::new(concurrency));
- 
-    for target in targets {
-        for port in ports.clone() {
-            let target_clone = target.clone();
-            let sem_clone = semaphore.clone();
-            tasks.push(tokio::spawn(async move {
-                let _permit = sem_clone.acquire().await.unwrap();
-                let res = fingerprint_port(&target_clone, port, timeout_sec).await;
-                (target_clone, port, res)
-            }));
-        }
-    }
- 
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    
+    // Run streaming in the background
+    let target = target_input.to_string();
+    tokio::spawn(async move {
+        let _ = run_fingerprint_streaming(&target, ports, concurrency, timeout_sec, tx).await;
+    });
+
     let mut results = vec![];
- 
-    for task in tasks {
-        let (target, port, res) = task.await.unwrap();
-        match res {
-            Ok(Some((service, version))) => {
-                results.push(FingerprintResult {
-                    target,
-                    port,
-                    state: "open".to_string(),
-                    service,
-                    version,
-                });
-            }
-            Ok(None) => {
-                results.push(FingerprintResult {
-                    target,
-                    port,
-                    state: "open".to_string(),
-                    service: "unknown".to_string(),
-                    version: "unknown".to_string(),
-                });
-            }
-            Err(_) => {
-                // optionally handle closed ports
-            }
-        }
+    while let Some(res) = rx.recv().await {
+        results.push(res);
     }
- 
+
     // Sort by target then port number
     results.sort_by(|a, b| {
         a.target.cmp(&b.target).then(a.port.cmp(&b.port))
     });
- 
+
     Ok(results)
+}
+
+pub async fn run_fingerprint_streaming(
+    target_input: &str,
+    ports: Vec<u16>,
+    concurrency: usize,
+    timeout_sec: u64,
+    tx: mpsc::UnboundedSender<FingerprintResult>,
+) -> anyhow::Result<()> {
+    let targets = expand_target(target_input);
+    let mut tasks = vec![];
+    let semaphore = Arc::new(Semaphore::new(concurrency));
+
+    for target in targets {
+        for port in ports.clone() {
+            let target_clone = target.clone();
+            let sem_clone = semaphore.clone();
+            let tx_clone = tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let _permit = sem_clone.acquire().await.unwrap();
+                let res = fingerprint_port(&target_clone, port, timeout_sec).await;
+                
+                let fp_res = match res {
+                    Ok(Some((service, version))) => Some(FingerprintResult {
+                        target: target_clone,
+                        port,
+                        state: "open".to_string(),
+                        service,
+                        version,
+                    }),
+                    Ok(None) => Some(FingerprintResult {
+                        target: target_clone,
+                        port,
+                        state: "open".to_string(),
+                        service: "unknown".to_string(),
+                        version: "unknown".to_string(),
+                    }),
+                    Err(_) => None,
+                };
+
+                if let Some(r) = fp_res {
+                    let _ = tx_clone.send(r);
+                }
+            }));
+        }
+    }
+
+    for task in tasks {
+        let _ = task.await;
+    }
+
+    Ok(())
 }
 
 fn expand_target(input: &str) -> Vec<String> {
