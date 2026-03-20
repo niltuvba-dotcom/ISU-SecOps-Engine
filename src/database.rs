@@ -1,81 +1,63 @@
-use once_cell::sync::Lazy;
-use rusqlite::{Connection, params};
-use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use rusqlite::{params, Connection, Result};
+use crate::fingerprint::FingerprintResult;
+use serde::Serialize;
 
-use crate::fingerprint;
-
-/// Global thread-safe SQLite connectionpool/mutex.
-static DB_CONN: Lazy<Mutex<Option<Connection>>> = Lazy::new(|| Mutex::new(None));
-
-/// Final result structure stored in the database history.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize)]
 pub struct ScanHistory {
-    /// Database unique ID.
-    pub id: i64,
-    /// Timestamp of the scan.
-    pub timestamp: String,
-    /// Targeted IP or Hostname.
+    pub id: i32,
     pub target: String,
-    /// Summary or serialized result array.
-    pub results: String,
+    pub timestamp: String,
+    pub results: Vec<FingerprintResult>,
 }
 
-/// Initializes the SQLite database if it hasn't been already.
-///
-/// Creates the `history` table for storing persistent scan results.
-pub fn init_db() -> anyhow::Result<()> {
-    let conn = Connection::open("aetheris_history.db")?;
+pub fn init_db() -> Result<Connection> {
+    let conn = Connection::open("secops_history.db")?;
+    
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        "CREATE TABLE IF NOT EXISTS scans (
+            id INTEGER PRIMARY KEY,
             target TEXT NOT NULL,
-            results TEXT NOT NULL
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            results_json TEXT NOT NULL
         )",
         [],
     )?;
+    
+    Ok(conn)
+}
 
-    let mut db = DB_CONN.lock().unwrap();
-    *db = Some(conn);
+pub fn save_scan(target: &str, results: &[FingerprintResult]) -> Result<()> {
+    let conn = init_db()?;
+    let results_json = serde_json::to_string(results).unwrap_or_else(|_| "[]".to_string());
+    
+    conn.execute(
+        "INSERT INTO scans (target, results_json) VALUES (?1, ?2)",
+        params![target, results_json],
+    )?;
+    
     Ok(())
 }
 
-/// Persists a scan result list to the history table.
-pub fn save_scan(target: &str, results: &[fingerprint::FingerprintResult]) -> anyhow::Result<()> {
-    let db = DB_CONN.lock().unwrap();
-    if let Some(conn) = db.as_ref() {
-        let results_json = serde_json::to_string(results)?;
-        conn.execute(
-            "INSERT INTO history (target, results) VALUES (?, ?)",
-            params![target, results_json],
-        )?;
+pub fn get_history() -> Result<Vec<ScanHistory>> {
+    let conn = init_db()?;
+    let mut stmt = conn.prepare("SELECT id, target, timestamp, results_json FROM scans ORDER BY timestamp DESC LIMIT 20")?;
+    
+    let history_iter = stmt.query_map([], |row| {
+        let results_json: String = row.get(3)?;
+        let results: Vec<FingerprintResult> = serde_json::from_str(&results_json).unwrap_or_default();
+        
+        Ok(ScanHistory {
+            id: row.get(0)?,
+            target: row.get(1)?,
+            timestamp: row.get(2)?,
+            results,
+        })
+    })?;
+    
+    let mut history = vec![];
+    for h in history_iter {
+        history.push(h?);
     }
-    Ok(())
-}
-
-/// Retrieves all previous scan sessions from the database.
-pub fn get_history() -> anyhow::Result<Vec<ScanHistory>> {
-    let db = DB_CONN.lock().unwrap();
-    if let Some(conn) = db.as_ref() {
-        let mut stmt = conn.prepare(
-            "SELECT id, timestamp, target, results FROM history ORDER BY id DESC LIMIT 50",
-        )?;
-        let history_iter = stmt.query_map([], |row| {
-            Ok(ScanHistory {
-                id: row.get(0)?,
-                timestamp: row.get(1)?,
-                target: row.get(2)?,
-                results: row.get(3)?,
-            })
-        })?;
-
-        let mut results = vec![];
-        for h in history_iter {
-            results.push(h?);
-        }
-        Ok(results)
-    } else {
-        Ok(vec![])
-    }
+    
+    Ok(history)
 }

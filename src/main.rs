@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 mod fingerprint;
 mod web;
+mod database;
 
 #[derive(Parser)]
 #[command(name = "secops")]

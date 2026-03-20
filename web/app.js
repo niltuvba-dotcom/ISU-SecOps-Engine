@@ -125,9 +125,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
  
+    const historyList = document.getElementById('history-list');
+ 
+    async function fetchHistory() {
+        try {
+            const response = await fetch('/api/history');
+            if (response.ok) {
+                const history = await response.json();
+                renderHistory(history);
+            }
+        } catch (err) {
+            console.error("Failed to fetch history:", err);
+        }
+    }
+ 
+    function renderHistory(history) {
+        historyList.innerHTML = '';
+        if (history.length === 0) {
+            historyList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No recent scans.</p>';
+            return;
+        }
+ 
+        history.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `
+                <div class="history-info">
+                    <strong>${item.target}</strong>
+                    <span>${new Date(item.timestamp).toLocaleString()}</span>
+                </div>
+                <button class="view-btn">View</button>
+            `;
+            div.querySelector('.view-btn').addEventListener('click', () => {
+                scanResults = item.results;
+                renderTable(scanResults);
+                resultsContainer.classList.remove('hidden');
+                document.getElementById('target').value = item.target;
+                window.scrollTo({ top: resultsContainer.offsetTop - 50, behavior: 'smooth' });
+            });
+            historyList.appendChild(div);
+        });
+    }
+ 
+    fetchHistory();
+ 
+    form.addEventListener('submit', async (e) => {
+        // ... (previous logic)
+        // ... update fetchHistory() inside onmessage or onclose
+    });
+ 
     function finishScan() {
         btnText.textContent = 'Initiate Scan';
         loader.classList.add('hidden');
         form.querySelector('button').disabled = false;
+        fetchHistory(); // Refresh history after scan
     }
 });

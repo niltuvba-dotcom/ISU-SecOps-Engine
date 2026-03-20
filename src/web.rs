@@ -12,6 +12,7 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
 use crate::fingerprint;
+use crate::database;
 
 #[derive(RustEmbed)]
 #[folder = "web/"]
@@ -29,6 +30,7 @@ pub async fn start_server(port: u16) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/api/fingerprint", post(api_fingerprint))
         .route("/api/ws/fingerprint", get(ws_handler))
+        .route("/api/history", get(api_history))
         .fallback(static_handler);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -89,11 +91,21 @@ async fn api_fingerprint(Json(payload): Json<FingerprintRequest>) -> impl IntoRe
             let timeout_sec = payload.timeout.unwrap_or(3);
             
             match fingerprint::run_fingerprint_logic(&payload.target, ports, concurrency, timeout_sec).await {
-                Ok(results) => (StatusCode::OK, Json(results)).into_response(),
+                Ok(results) => {
+                    let _ = database::save_scan(&payload.target, &results);
+                    (StatusCode::OK, Json(results)).into_response()
+                },
                 Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)).into_response(),
             }
         }
         Err(_) => (StatusCode::BAD_REQUEST, "Invalid port format".to_string()).into_response(),
+    }
+}
+
+async fn api_history() -> impl IntoResponse {
+    match database::get_history() {
+        Ok(history) => (StatusCode::OK, Json(history)).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)).into_response(),
     }
 }
 
