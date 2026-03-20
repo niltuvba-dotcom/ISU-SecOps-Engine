@@ -8,6 +8,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let scanResults = [];
     const searchInput = document.getElementById('search-input');
+    const portsInput = document.getElementById('ports');
+    const presetBtns = document.querySelectorAll('.preset-btn');
+
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            presetBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            portsInput.value = btn.dataset.ports;
+        });
+    });
+
     const btnExportJson = document.getElementById('btn-export-json');
     const btnExportCsv = document.getElementById('btn-export-csv');
  

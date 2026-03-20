@@ -26,8 +26,14 @@
                     <input type="text" id="target" placeholder="e.g. scanme.nmap.org" required value="scanme.nmap.org">
                 </div>
                 <div class="input-group">
-                    <label for="ports">Ports (Comma separated)</label>
-                    <input type="text" id="ports" placeholder="e.g. 22,80,443,3306" required value="22,80,443">
+                    <label>Ports (Comma separated)</label>
+                    <input type="text" id="ports" value="22,80,443" placeholder="e.g. 21,22,80,443,3306">
+                    <div class="profile-presets">
+                        <button type="button" class="preset-btn" data-ports="21,22,23,25,53,80,110,143,443,3306,5432,6379,8080">Popular</button>
+                        <button type="button" class="preset-btn" data-ports="80,443,8080,8443">Web</button>
+                        <button type="button" class="preset-btn" data-ports="22,23,3389">Remote</button>
+                        <button type="button" class="preset-btn" data-ports="3306,5432,6379,27017">DB</button>
+                    </div>
                 </div>
                 <button type="submit" id="btn-scan" class="primary-btn">
                     <span class="btn-text">Initiate Scan</span>
