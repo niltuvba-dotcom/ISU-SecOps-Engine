@@ -292,6 +292,26 @@ td {
     font-size: 0.95rem;
 }
 
+.version-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.cve-link {
+    color: var(--text-muted);
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.cve-link:hover {
+    color: var(--primary);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
 tr:hover td {
     background: rgba(255, 255, 255, 0.03);
 }
