@@ -20,6 +20,21 @@
         </header>
 
         <main>
+            <div id="scan-stats" class="scan-stats hidden">
+                <div class="stat-card">
+                    <span class="stat-label">Hosts Scanned</span>
+                    <span id="stat-hosts" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Open Ports</span>
+                    <span id="stat-ports" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Unique Services</span>
+                    <span id="stat-services" class="stat-value">0</span>
+                </div>
+            </div>
+
             <form id="scan-form">
                 <div class="input-group">
                     <label for="target">Target (IP or Domain)</label>
@@ -40,6 +55,16 @@
                     <div class="loader hidden"></div>
                 </button>
             </form>
+ 
+            <div id="scan-progress-container" class="progress-bar-container hidden">
+                <div class="progress-info">
+                    <span id="progress-text">Scanning targets...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
 
             <div id="results-container" class="hidden">
                 <div class="results-header">

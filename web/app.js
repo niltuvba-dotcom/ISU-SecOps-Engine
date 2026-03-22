@@ -6,7 +6,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsBody = document.getElementById('results-body');
     const errorMessage = document.getElementById('error-message');
 
+    const scanStats = document.getElementById('scan-stats');
+    const statHosts = document.getElementById('stat-hosts');
+    const statPorts = document.getElementById('stat-ports');
+    const statServices = document.getElementById('stat-services');
+    const progressContainer = document.getElementById('scan-progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressPercent = document.getElementById('progress-percent');
+    const progressText = document.getElementById('progress-text');
+ 
     let scanResults = [];
+    let uniqueHosts = new Set();
+    let uniqueServices = new Set();
+    let totalTargets = 0;
+    let completedTasks = 0;
     const searchInput = document.getElementById('search-input');
     const portsInput = document.getElementById('ports');
     const presetBtns = document.querySelectorAll('.preset-btn');
@@ -91,6 +104,26 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = ''; // Reset search
         
         scanResults = [];
+        uniqueHosts.clear();
+        uniqueServices.clear();
+        statHosts.textContent = '0';
+        statPorts.textContent = '0';
+        statServices.textContent = '0';
+        scanStats.classList.remove('hidden');
+        
+        // Estimate total tasks for progress bar
+        const portCount = ports.split(',').length;
+        const isCidr = target.includes('/');
+        let hostCount = 1;
+        if (isCidr) {
+            const mask = parseInt(target.split('/')[1]);
+            hostCount = Math.pow(2, 32 - mask);
+        }
+        totalTargets = hostCount * portCount;
+        completedTasks = 0;
+        updateProgress(0);
+        progressContainer.classList.remove('hidden');
+ 
         renderTable(scanResults);
         resultsContainer.classList.remove('hidden');
  
@@ -101,10 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
  
             socket.onopen = () => {
                 socket.send(JSON.stringify({ target, ports }));
+                progressText.textContent = `Scanning ${hostCount} host(s) on ${portCount} port(s)...`;
             };
  
             socket.onmessage = (event) => {
                 if (event.data === 'DONE') {
+                    updateProgress(100);
                     socket.close();
                     finishScan();
                     return;
@@ -113,6 +148,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const result = JSON.parse(event.data);
                     scanResults.push(result);
+                    
+                    // Update Stats
+                    uniqueHosts.add(result.target);
+                    if (result.service && result.service !== "unknown") {
+                        uniqueServices.add(result.service);
+                    }
+                    
+                    statHosts.textContent = uniqueHosts.size;
+                    statPorts.textContent = scanResults.length;
+                    statServices.textContent = uniqueServices.size;
+                    
+                    // Update Progress (Approximate since we only get results for open ports)
+                    // For a better progress bar, the backend should send a message for every port checked.
+                    // For now, we'll increment progress based on results but cap it at 95% until DONE.
+                    completedTasks++;
+                    const percent = Math.min(95, Math.round((completedTasks / totalTargets) * 100));
+                    updateProgress(percent);
+ 
                     // Sort locally as results arrive
                     scanResults.sort((a, b) => a.target.localeCompare(b.target) || a.port - b.port);
                     renderTable(scanResults);
@@ -180,15 +233,19 @@ document.addEventListener('DOMContentLoaded', () => {
  
     fetchHistory();
  
-    form.addEventListener('submit', async (e) => {
-        // ... (previous logic)
-        // ... update fetchHistory() inside onmessage or onclose
-    });
  
     function finishScan() {
         btnText.textContent = 'Initiate Scan';
         loader.classList.add('hidden');
         form.querySelector('button').disabled = false;
         fetchHistory(); // Refresh history after scan
+    }
+ 
+    function updateProgress(percent) {
+        progressFill.style.width = `${percent}%`;
+        progressPercent.textContent = `${percent}%`;
+        if (percent === 100) {
+            progressText.textContent = "Scan complete!";
+        }
     }
 });
