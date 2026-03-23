@@ -4,11 +4,11 @@ use tokio::time::{timeout, Duration};
 use tokio::sync::{Semaphore, mpsc};
 use std::sync::Arc;
 use regex::Regex;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use ipnet::IpNet;
 use std::str::FromStr;
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FingerprintResult {
     pub target: String,
     pub port: u16,
@@ -73,26 +73,37 @@ pub async fn run_fingerprint_streaming(
     let targets = expand_target(target_input);
     let mut tasks = vec![];
     let semaphore = Arc::new(Semaphore::new(concurrency));
-
+ 
     for target in targets {
-        for port in ports.clone() {
-            let target_clone = target.clone();
-            let sem_clone = semaphore.clone();
-            let tx_clone = tx.clone();
-            tasks.push(tokio::spawn(async move {
-                let _permit = sem_clone.acquire().await.unwrap();
-                let res = fingerprint_port(&target_clone, port, timeout_sec).await;
+        let target_clone = target.clone();
+        let ports_clone = ports.clone();
+        let sem_clone = semaphore.clone();
+        let tx_clone = tx.clone();
+        
+        tasks.push(tokio::spawn(async move {
+            // Smart Host Discovery: Only skip if scanning many ports
+            if ports_clone.len() > 5 && !is_host_up(&target_clone).await {
+                return;
+            }
+
+            for port in ports_clone {
+                let inner_target = target_clone.clone();
+                let inner_sem = sem_clone.clone();
+                let inner_tx = tx_clone.clone();
+                
+                let _permit = inner_sem.acquire().await.unwrap();
+                let res = fingerprint_port(&inner_target, port, timeout_sec).await;
                 
                 let fp_res = match res {
                     Ok(Some((service, version))) => Some(FingerprintResult {
-                        target: target_clone,
+                        target: inner_target,
                         port,
                         state: "open".to_string(),
                         service,
                         version,
                     }),
                     Ok(None) => Some(FingerprintResult {
-                        target: target_clone,
+                        target: inner_target,
                         port,
                         state: "open".to_string(),
                         service: "unknown".to_string(),
@@ -100,19 +111,30 @@ pub async fn run_fingerprint_streaming(
                     }),
                     Err(_) => None,
                 };
-
+ 
                 if let Some(r) = fp_res {
-                    let _ = tx_clone.send(r);
+                    let _ = inner_tx.send(r);
                 }
-            }));
-        }
+            }
+        }));
     }
-
+ 
     for task in tasks {
         let _ = task.await;
     }
-
+ 
     Ok(())
+}
+
+async fn is_host_up(target: &str) -> bool {
+    let common_ports = [80, 443, 22, 445, 135, 3389];
+    for port in common_ports {
+        let addr = format!("{}:{}", target, port);
+        if let Ok(Ok(_)) = timeout(Duration::from_millis(500), TcpStream::connect(&addr)).await {
+            return true;
+        }
+    }
+    false
 }
 
 fn expand_target(input: &str) -> Vec<String> {
