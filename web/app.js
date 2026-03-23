@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressPercent = document.getElementById('progress-percent');
     const progressText = document.getElementById('progress-text');
  
+    const scanAnalytics = document.getElementById('scan-analytics');
+    const serviceList = document.getElementById('service-distribution-list');
+ 
     let scanResults = [];
     let uniqueHosts = new Set();
     let uniqueServices = new Set();
@@ -110,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statPorts.textContent = '0';
         statServices.textContent = '0';
         scanStats.classList.remove('hidden');
+        scanAnalytics.classList.add('hidden');
         
         // Estimate total tasks for progress bar
         const portCount = ports.split(',').length;
@@ -158,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     statHosts.textContent = uniqueHosts.size;
                     statPorts.textContent = scanResults.length;
                     statServices.textContent = uniqueServices.size;
+                    renderAnalytics();
                     
                     // Update Progress (Approximate since we only get results for open ports)
                     // For a better progress bar, the backend should send a message for every port checked.
@@ -239,6 +244,36 @@ document.addEventListener('DOMContentLoaded', () => {
         loader.classList.add('hidden');
         form.querySelector('button').disabled = false;
         fetchHistory(); // Refresh history after scan
+    }
+ 
+    function renderAnalytics() {
+        if (scanResults.length === 0) {
+            scanAnalytics.classList.add('hidden');
+            return;
+        }
+        scanAnalytics.classList.remove('hidden');
+        
+        const counts = {};
+        scanResults.forEach(res => {
+            const svc = res.service || "unknown";
+            counts[svc] = (counts[svc] || 0) + 1;
+        });
+        
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const max = Math.max(...Object.values(counts));
+        
+        serviceList.innerHTML = '';
+        sorted.forEach(([name, count]) => {
+            const percent = Math.round((count / max) * 100);
+            const item = document.createElement('div');
+            item.className = 'service-item';
+            item.innerHTML = `
+                <div class="service-name">${name}</div>
+                <div class="service-bar-track"><div class="service-bar-fill" style="width: ${percent}%"></div></div>
+                <div class="service-count">${count}</div>
+            `;
+            serviceList.appendChild(item);
+        });
     }
  
     function updateProgress(percent) {
