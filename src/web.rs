@@ -66,7 +66,7 @@ async fn handle_socket(mut socket: WebSocket) {
 
                 // Stream results back to socket
                 while let Some(res) = rx.recv().await {
-                    if let Ok(json) = serde_json::json!(res).to_string().try_into() {
+                    if let Ok(json) = serde_json::to_string(&res) {
                         if socket.send(Message::Text(json)).await.is_err() {
                             break;
                         }
