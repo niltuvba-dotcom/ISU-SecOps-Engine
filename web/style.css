@@ -215,6 +215,24 @@ header {
     margin-bottom: 3.5rem;
 }
 
+.logo-container {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.logo-svg {
+    width: 64px;
+    height: 64px;
+    filter: drop-shadow(0 0 15px rgba(0, 243, 255, 0.4));
+    animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(5deg); }
+}
+
 h1 {
     font-size: 3.5rem;
     font-weight: 800;
