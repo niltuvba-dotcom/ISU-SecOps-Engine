@@ -96,8 +96,43 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
  
-        const target = document.getElementById('target').value;
-        const ports = document.getElementById('ports').value;
+        const target = document.getElementById('target').value.trim();
+        const ports = document.getElementById('ports').value.trim();
+ 
+        // Validation
+        let isValid = true;
+        
+        // Target: IP, CIDR or Hostname
+        const targetRegex = /^([a-zA-Z0-9.-]+|(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?)$/;
+        if (!targetRegex.test(target)) {
+            showError("Invalid target format. Use IP, CIDR (e.g. /24) or Hostname.");
+            document.getElementById('target').classList.add('input-error');
+            isValid = false;
+        } else {
+            document.getElementById('target').classList.remove('input-error');
+        }
+ 
+        // Ports: 1-65535 comma separated
+        const portRegex = /^(\d{1,5})(,\d{1,5})*$/;
+        if (!portRegex.test(ports)) {
+            showError("Invalid ports. Use comma separated numbers (e.g. 80,443).");
+            document.getElementById('ports').classList.add('input-error');
+            isValid = false;
+        } else {
+            const allInRange = ports.split(',').every(p => {
+                const num = parseInt(p);
+                return num >= 1 && num <= 65535;
+            });
+            if (!allInRange) {
+                showError("Ports must be between 1 and 65535.");
+                document.getElementById('ports').classList.add('input-error');
+                isValid = false;
+            } else {
+                document.getElementById('ports').classList.remove('input-error');
+            }
+        }
+ 
+        if (!isValid) return;
  
         // Reset UI
         resultsContainer.classList.add('hidden');
@@ -196,6 +231,13 @@ document.addEventListener('DOMContentLoaded', () => {
             finishScan();
         }
     });
+ 
+    function showError(msg) {
+        errorMessage.textContent = msg;
+        errorMessage.classList.remove('hidden');
+        errorMessage.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
+        setTimeout(() => errorMessage.style.animation = '', 500);
+    }
  
     const historyList = document.getElementById('history-list');
  
