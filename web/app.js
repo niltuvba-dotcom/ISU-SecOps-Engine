@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressFill = document.getElementById('progress-fill');
     const progressPercent = document.getElementById('progress-percent');
     const progressText = document.getElementById('progress-text');
+    const liveLogStatus = document.getElementById('live-log-status');
  
     const scanAnalytics = document.getElementById('scan-analytics');
     const serviceList = document.getElementById('service-distribution-list');
@@ -127,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         completedTasks = 0;
         updateProgress(0);
         progressContainer.classList.remove('hidden');
+        liveLogStatus.textContent = "Scanning targets...";
  
         renderTable(scanResults);
         resultsContainer.classList.remove('hidden');
@@ -162,6 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     statHosts.textContent = uniqueHosts.size;
                     statPorts.textContent = scanResults.length;
                     statServices.textContent = uniqueServices.size;
+                    liveLogStatus.textContent = `Finding: ${result.target}:${result.port} (${result.service})`;
                     renderAnalytics();
                     
                     // Update Progress (Approximate since we only get results for open ports)

@@ -210,6 +210,14 @@ body {
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.live-log {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    opacity: 0.8;
+}
+
 header {
     text-align: center;
     margin-bottom: 3.5rem;
