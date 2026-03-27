@@ -38,6 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnExportJson = document.getElementById('btn-export-json');
     const btnExportCsv = document.getElementById('btn-export-csv');
+    const btnExportPdf = document.getElementById('btn-export-pdf');
+ 
+    btnExportPdf.addEventListener('click', () => {
+        if (scanResults.length === 0) return;
+        window.print();
+    });
  
     btnExportJson.addEventListener('click', () => {
         if (scanResults.length === 0) return;

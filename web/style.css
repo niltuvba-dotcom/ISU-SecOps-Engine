@@ -271,7 +271,25 @@ form {
     margin-bottom: 3rem;
 }
 
-@media (max-width: 850px) {
+@media print {
+    body { background: white !important; color: black !important; }
+    .glass-panel { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+    .logo-svg { filter: none !important; animation: none !important; }
+    #scan-form, .logo-container, .profile-presets, .export-actions, #history-container, #error-message, .cve-link { display: none !important; }
+    .scan-stats { grid-template-columns: repeat(3, 1fr) !important; color: black !important; margin-bottom: 20px !important; }
+    .stat-card { border: 1px solid #ddd !important; background: #f9f9f9 !important; color: black !important; }
+    .stat-value { color: #000 !important; }
+    .scan-analytics { display: block !important; border: 1px solid #ddd !important; padding: 15px !important; }
+    .service-bar-track { border: 1px solid #ccc !important; }
+    .service-bar-fill { background: #333 !important; }
+    table { width: 100% !important; border-collapse: collapse !important; }
+    th, td { border: 1px solid #ddd !important; color: black !important; padding: 8px !important; }
+    th { background: #eee !important; }
+    h1 { color: black !important; font-size: 24pt !important; margin-top: 0 !important; }
+    .accent { color: black !important; }
+}
+
+@media (max-width: 768px) {
     form {
         grid-template-columns: 1fr;
     }
