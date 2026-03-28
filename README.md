@@ -1,68 +1,57 @@
-# 🌌 Aetheris Engine (v1.4.0)
+# 🛡️ ISU-SEC-OPS ENGINE
 
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
-![Terminal](https://img.shields.io/badge/CLI-Premium-7000ff?style=for-the-badge)
-![Security](https://img.shields.io/badge/SecOps-Advanced-00f3ff?style=for-the-badge)
+![Axum](https://img.shields.io/badge/Axum-7000ff?style=for-the-badge)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 
-**Aetheris Engine**, profesyonel güvenlik uzmanları için tasarlanmış, **öncelikli olarak terminal (CLI) performansına odaklanan**, yüksek hızlı bir ağ keşif ve servis parmak izi (fingerprinting) asistanıdır. "Specter-Grade" hızı ve modern terminal UX/UI tasarımıyla ağınızdaki görünmez servisleri saniyeler içinde raporlar.
+**ISU-SecOps-Engine** is a high-performance, professional-grade network service fingerprinting and host discovery tool built with Rust. It combines a robust backend engine with a premium, glassmorphism-based web dashboard for real-time security analysis.
 
----
+## 🚀 Key Features
 
-## ⌨️ Terminal (CLI) Deneyimi
+- **Extreme Performance:** Built on Tokio's asynchronous runtime for high-concurrency port scanning.
+- **Smart Host Discovery:** Automatically detects and skips dead hosts to optimize large network (/24) scans.
+- **Service Fingerprinting:** Deep banner grabbing and version detection for protocols like SSH, HTTP, Redis, Postgres, SMTP, and more.
+- **Premium Web Dashboard:** Modern dark-mode UI with glassmorphism, floating animations, and real-time WebSocket updates.
+- **Vulnerability Intelligence:** Integrated one-click CVE/exploit lookup for detected service versions.
+- **Visual Analytics:** Real-time metrics (Hosts Scanned, Open Ports) and service distribution charts.
+- **Persistent Scan History:** SQLite-backed storage allows you to review and re-analyze past scans.
+- **Multi-Format Export:** Export your results in JSON, CSV, or generate a professional PDF Report.
 
-Aetheris, terminalde sadece veri basmaz; modern, renkli ve etkileşimli bir deneyim sunar.
+## 🛠️ Technology Stack
 
-### 🚀 Temel Kullanım (Pentest)
+- **Backend:** Rust, Axum, Tokio, Rusqlite, Serde
+- **Frontend:** Vanilla HTML5/CSS3 (Glassmorphism), JavaScript (ES6+), WebSockets
+- **Protocols:** TCP, SSL/TLS Banner Grabbing
+
+## 📦 Installation & Setup
+
+### Prerequisites
+- [Rust](https://rustup.rs/) (Stable 1.70+)
+- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (MSVC Linker)
+
+### Building from Source
 ```bash
-# Servis Parmak İzi Tespiti (Gelişmiş Tablo Çıktısı)
-aetheris pentest fingerprint <target> --ports 22,80,443
+# Clone the repository
+git clone https://github.com/yourusername/ISU-SecOps-Engine.git
+cd ISU-SecOps-Engine
 
-# Tüm Port Aralığını Tara
-aetheris pentest fingerprint 192.168.1.1 --ports 1-1000 --concurrency 500
-
-# Ağ Bloğu (CIDR) Taraması
-aetheris pentest fingerprint 10.0.0.0/24 --ports 80,443
+# Build & Run the Web Dashboard
+cargo run -- web
 ```
 
-### 📊 Çıktı Formatları
-Terminal sonuçlarını farklı formatlarda dışa aktarabilirsiniz:
--   **Table (Varsayılan):** İnsan dostu, renkli ve hizalanmış UTF-8 tablolar.
--   **JSON:** Otomasyon ve scripting için tam uyumlu veri yapısı.
--   **CSV:** Raporlama ve Excel entegrasyonu için.
+## 🖥️ Usage
+
+1. **Launch the Engine:** Run `cargo run -- web`.
+2. **Access the Dashboard:** Open `http://127.0.0.1:8080` in your browser.
+3. **Configure Scan:**
+   - Enter a target IP (e.g., `192.168.1.1`), Hostname, or CIDR (e.g., `192.168.1.0/24`).
+   - Use **Scan Presets** (Web, DB, Popular) or enter custom ports.
+4. **Analyze:** Watch results stream in real-time. Use the search bar to filter specific services.
+5. **Report:** Click **PDF Report** to generate a clean summary for documentation.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
-
-## 📉 Sürüm Notları (v1.4.0)
-
-### 💎 Terminal Devrimi
-- **Aetheris CLI Hiyerarşisi:** `pentest fingerprint` yapısıyla profesyonel komut akışı.
-- **Canlı Progress Bar:** `indicatif` ile her bir portun ve hostun tarama ilerlemesi anlık takip edilir.
-- **Premium Tablolar:** `comfy-table` ile servisin versiyonu, CVE linkleri ve durumu kusursuz bir tabloda sunulur.
-
-### 🌐 Web Dashboard (Companion)
-*Terminal tercih etmeyen anlar için* dashboard üzerinden gerçek zamanlı WebSocket akışı, servis analitikleri ve PDF raporlama modülleri mevcuttur.
-
----
-
-## 🛠️ Hızlı Komutlar (Justfile)
-
-Proje yönetimini ve testleri terminalden tek kelimeyle halledin:
-- `just fmt`: Kod formatını düzeltir.
-- `just lint`: Güvenlik ve performans denetimi yapar.
-- `just test`: Tüm birim testleri çalıştırır.
-- `just scan`: Hızlı bir lokal tarama başlatır.
-
----
-
-## 🚀 Kurulum
-
-1. **Rust Yükle:** `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-2. **Klonla & Derle:**
-   ```bash
-   git clone https://github.com/aetheris/engine.git
-   cd engine
-   cargo build --release
-   ```
-
----
-*Developed with Aetheris Protocol. Focus on Terminal. Built for Security.*
+*Developed by Antigravity AI for ISU SecOps.*
