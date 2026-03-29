@@ -1,28 +1,21 @@
-# 🏛️ Proje Mimarisi (Architecture)
+# Proje Mimarisi (Architecture)
 
-Aetheris Engine, yüksek eşzamanlılık (High Concurrency) ve gerçek zamanlı veri akışı üzerine inşa edilmiş, katmanlı bir yazılım mimarisine sahiptir.
+ISU-SecOps-Engine, modern ve yüksek performanslı bir güvenlik aracı olarak üç ana katmandan oluşur:
 
-## 1. Backend: Rust Core Motoru
-Uygulamanın kalbi, Rust dilinin güvenli ve asenkron (Tokio) yapısı üzerinde çalışır.
+## 1. Backend (Paslanmaz Motor - Rust)
+- **Hız ve Güvenlik:** Asenkron Rust (Tokio) kullanılarak aynı anda yüzlerce portu minimum kaynakla tarayabilir.
+- **Modüler Yapı:**
+    - `fingerprint.rs`: Banner grabbing, servis tespiti ve CIDR çözümleme mantığı.
+    - `database.rs`: SQLite entegrasyonu ve tarama geçmişi yönetimi.
+    - `web.rs`: Axum tabanlı API ve WebSocket sunucusu.
 
-- **Asenkron Tarama Sistemi:** `tokio::spawn` ile her hedef ve port için bağımsız görevler (Tasks) oluşturulur. `tokio::sync::Semaphore` kullanılarak sistem kaynaklarının aşırı tüketilmesi önlenir.
-- **Banner Grabbing:** TCP bağlantısı kurulduktan sonra pasif banner okuma ve regex tabanlı servis tespiti yapılır.
-- **Akıllı Keşif (Smart Discovery):** Port taramasına başlamadan önce hedefin ayakta olup olmadığını hızlı bir TCP-Check ile doğrulayan katmandır.
-- **Veritabanı Katmanı:** `rusqlite` aracılığıyla tarama sonuçları SQLite üzerinde yapılandırılmış bir şema ile saklanır.
+## 2. İletişim Katmanı (Real-Time)
+- **WebSockets:** Tarama sonuçları backend'den frontend'e anlık olarak akar. Bu sayede kullanıcı tüm taramanın bitmesini beklemeden ilk bulguları görebilir.
 
-## 2. İletişim: WebSocket Hub
-HTTP API'ların aksine, Aetheris Engine kesintisiz veri iletimi için WebSockets tercih eder.
+## 3. Frontend (Premium Dashboard)
+- **Modern UI:** Vanilla JS ve CSS3 kullanılarak oluşturulan "Glassmorphism" tasarımı.
+- **İstemci Tarafı Analitikler:** Gelen veriler tarayıcıda anlık olarak işlenerek servis dağılım grafikleri ve metrikler oluşturulur.
+- **Raporlama:** CSS Print Media kullanılarak profesyonel PDF çıktıları üretilir.
 
-- **Unbounded Channels:** Backend motorundan gelen sonuçlar `mpsc::unbounded_channel` üzerinden WebSocket handler'ına iletilir.
-- **Anlık Akış:** Kullanıcı arayüzü, tarama bitmeden her bulunan açık portu milisaniyeler içinde ekranda görüntüler.
-
-## 3. Frontend: Modern Dashboard
-Arayüz tasarımı, "Aesthetics matter" felsefesiyle kurumsal bir görünüm sunar.
-
-- **Glassmorphism Design:** Yarı saydam paneller, neon efektleri ve hareketli SVG arka planlar ile modern bir deneyim sunulur.
-- **İstemci Tarafı İşleme:** JS modülleri, gelen verileri yerel olarak filtreler, sıralar ve istatistiklere dönüştürür.
-- **Raporlama Motoru:** `window.print()` ve `@media print` CSS kuralları ile tarayıcı üzerinden yüksek çözünürlüklü PDF raporları üretilir.
-
-## 4. Güvenlik ve Doğrulama
-- **Input Validation:** Geçersiz formatta IP, CIDR veya Port girişleri frontend düzeyinde Regex ile doğrulanır.
-- **Memory Safety:** Rust'ın mülkiyet (ownership) modeli sayesinde bellek sızıntıları ve race-condition gibi hatalar çekirdek seviyesinde engellenmiştir.
+## 4. Veri Saklama Katmanı
+- **SQLite:** Tarama sonuçları yapılandırılmış bir şekilde lokal veritabanında saklanır, böylece uygulama kapatılıp açılsa bile geçmiş kaybolmaz.
