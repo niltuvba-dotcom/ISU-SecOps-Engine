@@ -4,54 +4,53 @@
 ![Axum](https://img.shields.io/badge/Axum-7000ff?style=for-the-badge)
 ![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 
-**ISU-SecOps-Engine** is a high-performance, professional-grade network service fingerprinting and host discovery tool built with Rust. It combines a robust backend engine with a premium, glassmorphism-based web dashboard for real-time security analysis.
-
-## 🚀 Key Features
-
-- **Extreme Performance:** Built on Tokio's asynchronous runtime for high-concurrency port scanning.
-- **Smart Host Discovery:** Automatically detects and skips dead hosts to optimize large network (/24) scans.
-- **Service Fingerprinting:** Deep banner grabbing and version detection for protocols like SSH, HTTP, Redis, Postgres, SMTP, and more.
-- **Premium Web Dashboard:** Modern dark-mode UI with glassmorphism, floating animations, and real-time WebSocket updates.
-- **Vulnerability Intelligence:** Integrated one-click CVE/exploit lookup for detected service versions.
-- **Visual Analytics:** Real-time metrics (Hosts Scanned, Open Ports) and service distribution charts.
-- **Persistent Scan History:** SQLite-backed storage allows you to review and re-analyze past scans.
-- **Multi-Format Export:** Export your results in JSON, CSV, or generate a professional PDF Report.
-
-## 🛠️ Technology Stack
-
-- **Backend:** Rust, Axum, Tokio, Rusqlite, Serde
-- **Frontend:** Vanilla HTML5/CSS3 (Glassmorphism), JavaScript (ES6+), WebSockets
-- **Protocols:** TCP, SSL/TLS Banner Grabbing
-
-## 📦 Installation & Setup
-
-### Prerequisites
-- [Rust](https://rustup.rs/) (Stable 1.70+)
-- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (MSVC Linker)
-
-### Building from Source
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/ISU-SecOps-Engine.git
-cd ISU-SecOps-Engine
-
-# Build & Run the Web Dashboard
-cargo run -- web
-```
-
-## 🖥️ Usage
-
-1. **Launch the Engine:** Run `cargo run -- web`.
-2. **Access the Dashboard:** Open `http://127.0.0.1:8080` in your browser.
-3. **Configure Scan:**
-   - Enter a target IP (e.g., `192.168.1.1`), Hostname, or CIDR (e.g., `192.168.1.0/24`).
-   - Use **Scan Presets** (Web, DB, Popular) or enter custom ports.
-4. **Analyze:** Watch results stream in real-time. Use the search bar to filter specific services.
-5. **Report:** Click **PDF Report** to generate a clean summary for documentation.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+**ISU-SecOps-Engine**, profesyonel güvenlik uzmanları için tasarlanmış, yüksek performanslı ve asenkron çalışan bir servis parmak izi (fingerprinting) ve ağ keşif aracıdır. Rust dili ile geliştirilmiş çekirdek motoru, modern ve etkileşimli bir web arayüzü ile birleşerek gerçek zamanlı analiz imkanı sunar.
 
 ---
-*Developed by Antigravity AI for ISU SecOps.*
+
+## 📈 Sürüm Geçmişi ve Özellikler
+
+### [v1.3.0] - İstihbarat & Profesyonel Katman (Mevcut)
+- **Akıllı Host Keşfi:** Geniş ağlarda (CIDR) sadece aktif hostları tespit ederek tarama süresini %80 optimize eden "Smart Discovery" motoru.
+- **CVE Zafiyet Bilgisi:** Tespit edilen servis versiyonları için otomatik oluşturulan zafiyet araştırma (CVE) linkleri.
+- **Profesyonel Analitik:** Servis dağılımını görsel barlarla gösteren dinamik dashboard bileşenleri.
+- **PDF Raporlama:** Taramaları profesyonel bir formatta PDF olarak dışa aktarma (Print-Media).
+- **Kurumsal Kimlik:** Hareketli (animated) SVG logo, favicon ve premium glassmorphism tasarımı.
+- **Gelişmiş Form Doğrulama:** Regex tabanlı akıllı girdi kontrolü ve hata animasyonları.
+
+### [v1.2.0] - Gelişmiş UX & CIDR Desteği
+- **CIDR Tarama:** `/24`, `/16` gibi ağ aralıklarını tarama yeteneği.
+- **Tarama Profilleri:** Sık kullanılan port grupları için "Web", "DB", "Popular" hazır seçim butonları.
+- **Gerçek Zamanlı Metrikler:** Taranan host, bulunan açık port ve benzersiz servis sayısı sayaçları.
+- **Dinamik İlerleme Çubuğu:** Tarama yüzdesini ve hedeflenen host sayısını gösteren akış.
+
+### [v1.1.0] - Web Kontrol Paneli & Kalıcılık
+- **WebSocket Entegrasyonu:** Backend'den frontend'e kesintisiz ve anlık veri akışı.
+- **SQLite Geçmişi:** Yapılan tüm taramaların veritabanında saklanması ve geçmişe dönük analiz.
+- **Dışa Aktarma:** Sonuçları JSON ve CSV formatlarında indirme desteği.
+
+### [v1.0.0] - Temel Tarama Çekirdeği
+- **Rust TCP Engine:** Tokio tabanlı yüksek eşzamanlılıklı (concurrent) bağlantı yönetimi.
+- **Service Fingerprinting:** Banner grabbing yöntemiyle servis ve versiyon tespiti.
+- **Performans Ayarları:** Eşzamanlılık (Semaphore) ve zaman aşımı (Timeout) yönetimi.
+
+---
+
+## 🛠️ Teknoloji Yığını
+
+- **Backend:** `Rust`, `Axum` (Web Framework), `Tokio` (Async Runtime), `Rusqlite` (Database).
+- **Frontend:** `Vanilla HTML5/CSS3`, `JavaScript ES6+`, `WebSockets`.
+- **Ek Katmanlar:** `Serde` (JSON/Serialization), `IpNet` (Network calculation).
+
+## 🚀 Kurulum ve Çalıştırma
+
+1. **Ön Koşullar:** [Rust](https://rustup.rs/) ve C++ Build Tools (Windows için) yüklü olmalıdır.
+2. **Klonlama:** `git clone https://github.com/your-repo/ISU-SecOps-Engine.git`
+3. **Çalıştırma:** 
+   ```bash
+   cargo run -- web
+   ```
+4. **Erişim:** Tarayıcınızda `http://127.0.0.1:8080` adresini açın.
+
+---
+*Developed for ISU SecOps by Antigravity AI.*

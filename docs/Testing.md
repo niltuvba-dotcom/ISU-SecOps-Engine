@@ -1,35 +1,35 @@
-# Test ve Doğrulama (Testing)
+# 🧪 Test ve Doğrulama (Testing)
 
-ISU-SecOps-Engine'in düzgün çalıştığını doğrulamak için aşağıdaki yöntemler kullanılabilir:
+ISU-SecOps-Engine'in kararlılığını ve doğruluğunu garanti altına almak için hazırlanan test prosedürleri aşağıda detaylandırılmıştır.
 
-## 1. Birim Testler (Unit Testing)
-Rust tarafındaki iç mantığı test etmek için şu komutu çalıştırın:
-```bash
-cargo test
-```
-Bu komut, IP çözümleme (`expand_target`) ve fingerprinting yapılarını kontrol eder.
+## 1. Birim (Unit) Testleri
+Rust çekirdek motoru ve IP hesaplama algoritmaları için tasarlanan birim testler.
+- **Komut:** `cargo test`
+- **İçerik:** 
+  - `expand_target`: CIDR bloklarının (/24 vb.) doğru IP dizilerine dönüştürülmesi.
+  - `FingerprintResult Serialization`: JSON verilerinin frontend uyumluluğu.
+  - `IPNet` Entegrasyonu: Ağ sınırlarının doğrulanması.
 
-## 2. Entegrasyon ve Manuel Testler
-Uygulamayı başlatın:
-```bash
-cargo run -- web
-```
-Ardından tarayıcıyı açın (`http://127.0.0.1:8080`) ve şu senaryoları uygulayın:
+## 2. Entegrasyon ve Fonksiyonel Testler
+Uygulamanın hem backend hem de frontend katmanlarının uyumunu denetleyen interaktif testlerdir.
 
-### Senaryo A: Port Profili Testi
-1. "Web" butonuna tıklayın.
-2. Port listesinin `80,443,8080,8443` olarak değiştiğini doğrulayın.
+### Senaryo A: Port Profili ve UI Etkileşimi
+1. **Buton Kontrolü:** "Web", "DB", "Popular" butonlarına tıklanarak port girdisinin anında değiştiği doğrulanır.
+2. **Görsel Geri Bildirim:** Tıklanan profil butonunun aktif (highlight) olduğu gözlemlenir.
 
-### Senaryo B: Canlı Tarama ve WebSocket Testi
-1. Hedef IP hanesine `scanme.nmap.org` girin.
-2. "Initiate Scan" butonuna basın.
-3. Sonuçların tabloda anlık olarak (her port taraması bittiğinde) akış sağladığını doğrulayın.
+### Senaryo B: Akıllı Host Keşfi ve Tarama Akışı
+1. **Hedef:** Gerçek bir ağ bloğu veya `scanme.nmap.org`.
+2. **Doğrulama:** Tarama başladığında tepedeki metrik kartlarının (Hosts Scanned, Open Ports) canlı olarak arttığı görülmelidir.
+3. **Smart Discovery:** Host kapalıysa servis taramasının atlandığı ve zamandan tasarruf edildiği kontrol edilir.
 
-### Senaryo C: Kalıcılık (Persistency) Testi
-1. Bir tarama yapın ve sonuçları görün.
-2. Sayfayı yenileyin (F5).
-3. Sonuçların tablodan kaybolmadığını ve veritabanı üzerinden tekrar yüklendiğini doğrulayın.
+### Senaryo C: Kalıcılık ve SQLite Veritabanı
+1. Başarılı bir tarama yapıldıktan sonra tarayıcı yenilenir (F5).
+2. Sayfa yüklendiğinde `Recent Activity` (Son Etkinlikler) kısmında taramanın loglandığı ve tıklandığında sonuçların tekrar geldiği doğrulanır.
 
-### Senaryo D: Girdi Doğrulama (Validation) Testi
-1. Geçersiz bir IP girin (Örn: `999.999.999.999`).
-2. Uygulamanın taramayı başlatmadığını ve sallanma (shake) animasyonuyla hata verdiğini kontrol edin.
+### Senaryo D: Girdi Doğrulama ve Güvenlik
+1. **Yanlış Giriş:** IP hanesine harf veya geçersiz CIDR (Örn: `/33`) girilir.
+2. **Beklenen Sonuç:** Uygulama hata mesajını gösterir ve shake (sallanma) animasyonunu tetikleyerek taramayı engeller.
+
+## 3. Raporlama ve Dışa Aktarma
+1. `JSON` ve `CSV` butonlarına basılarak verinin ham hali indirilir.
+2. `PDF Report` butonuna basılarak tarayıcı baskı önizlemesi açılır ve sayfanın temiz (gereksiz UI öğelerinden arındırılmış) bir rapor sunduğu doğrulanır.
