@@ -137,7 +137,7 @@ async fn is_host_up(target: &str) -> bool {
     false
 }
 
-fn expand_target(input: &str) -> Vec<String> {
+pub fn expand_target(input: &str) -> Vec<String> {
     if let Ok(net) = IpNet::from_str(input) {
         net.hosts().map(|ip| ip.to_string()).collect()
     } else {

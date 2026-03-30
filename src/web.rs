@@ -1,10 +1,10 @@
 use axum::{
     extract::{Json, ws::{WebSocketUpgrade, WebSocket, Message}},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::{get, post},
     Router, http::{StatusCode, header, Uri},
 };
-use futures::{sink::SinkExt, stream::StreamExt};
+use futures::stream::StreamExt;
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 use std::net::SocketAddr;

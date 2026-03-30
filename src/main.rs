@@ -1,4 +1,9 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use colored::*;
+use comfy_table::{presets::UTF8_FULL, Attribute, Cell, Color, Table};
+use indicatif::{ProgressBar, ProgressStyle};
+use std::time::Duration;
+use tokio::sync::mpsc;
 
 mod fingerprint;
 mod web;
@@ -6,7 +11,8 @@ mod database;
 
 #[derive(Parser)]
 #[command(name = "secops")]
-#[command(about = "ISU SecOps Engine CLI", long_about = None)]
+#[command(version = "1.3.0")]
+#[command(about = "🛡️ ISU SecOps - Professional Service Fingerprinting Engine", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -14,12 +20,28 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Pentest modules
+    /// 🕵️ Pentest & Service Fingerprinting
     Pentest {
-        #[command(subcommand)]
-        command: PentestCommands,
+        /// Target IP, Hostname or CIDR (e.g. 192.168.1.0/24)
+        target: String,
+
+        /// Ports to scan (comma separated, e.g., 22,80,443)
+        #[arg(short, long, default_value = "80,443,22,21,3306,5432")]
+        ports: String,
+
+        /// Number of concurrent scans
+        #[arg(short, long, default_value_t = 100)]
+        concurrency: usize,
+
+        /// Timeout in seconds for each port scan
+        #[arg(short, long, default_value_t = 3)]
+        timeout: u64,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value_t = OutputFormat::Table)]
+        output: OutputFormat,
     },
-    /// Start the integrated Web UI
+    /// 🌐 Start the integrated Web UI
     Web {
         /// Port to start the server on
         #[arg(short, long, default_value_t = 8080)]
@@ -27,25 +49,11 @@ enum Commands {
     },
 }
 
-#[derive(Subcommand)]
-enum PentestCommands {
-    /// Service fingerprinting on open ports
-    Fingerprint {
-        /// Target IP or domain
-        target: String,
-
-        /// Ports to scan (comma separated, e.g., 22,80,443,3306)
-        #[arg(long)]
-        ports: String,
- 
-        /// Number of concurrent scans
-        #[arg(long, default_value_t = 100)]
-        concurrency: usize,
- 
-        /// Timeout in seconds for each port scan
-        #[arg(long, default_value_t = 3)]
-        timeout: u64,
-    },
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum OutputFormat {
+    Table,
+    Json,
+    Csv,
 }
 
 #[tokio::main]
@@ -53,27 +61,113 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Pentest { command } => match command {
-            PentestCommands::Fingerprint { target, ports, concurrency, timeout } => {
-                println!("Starting fingerprinting on {} for ports: {} (Concurrency: {}, Timeout: {}s)", target, ports, concurrency, timeout);
-                
-                let parsed_ports: Result<Vec<u16>, _> = ports.split(',')
-                    .map(|p| p.trim().parse::<u16>())
-                    .collect();
-                
-                match parsed_ports {
-                    Ok(p) => {
-                        if let Err(e) = fingerprint::run_fingerprint(target, p, *concurrency, *timeout).await {
-                            eprintln!("Error running fingerprint: {}", e);
-                        }
-                    }
-                    Err(_) => eprintln!("Invalid port list format. use e.g., --ports 22,80,443"),
-                }
-            }
+        Commands::Pentest { target, ports, concurrency, timeout, output } => {
+            run_cli_pentest(target, ports, *concurrency, *timeout, *output).await?;
         },
         Commands::Web { port } => {
+            println!("{}", "🌐 Starting ISU-SecOps Web Dashboard...".cyan().bold());
+            println!("📍 Local address: {}", format!("http://127.0.0.1:{}", port).bright_white().underline());
             if let Err(e) = web::start_server(*port).await {
-                eprintln!("Failed to start web server: {}", e);
+                eprintln!("{} {}", "❌ Error:".red().bold(), e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, timeout: u64, output: OutputFormat) -> anyhow::Result<()> {
+    let parsed_ports: Vec<u16> = ports_str.split(',')
+        .filter_map(|p| p.trim().parse::<u16>().ok())
+        .collect();
+
+    if parsed_ports.is_empty() {
+        anyhow::bail!("Invalid port list format. Use e.g., --ports 22,80,443");
+    }
+
+    if output == OutputFormat::Table {
+        println!("{}", "\n🛡️ ISU SecOps Security Scan".cyan().bold());
+        println!("{} {}\n", "Target:".bright_white(), target.yellow());
+    }
+
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    
+    // We need to estimate total tasks for the progress bar
+    // Since we don't have direct access to expand_target's size easily without calling it,
+    // let's just use it twice or refactor later.
+    let targets = fingerprint::expand_target(target);
+    let total_tasks = targets.len() * parsed_ports.len();
+    
+    let pb = if output == OutputFormat::Table {
+        let p = ProgressBar::new(total_tasks as u64);
+        p.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}")
+            .unwrap()
+            .progress_chars("#>-"));
+        p.enable_steady_tick(Duration::from_millis(100));
+        Some(p)
+    } else {
+        None
+    };
+
+    let t = target.to_string();
+    let p_clone = parsed_ports.clone();
+    tokio::spawn(async move {
+        let _ = fingerprint::run_fingerprint_streaming(&t, p_clone, concurrency, timeout, tx).await;
+    });
+
+    let mut results = vec![];
+    while let Some(res) = rx.recv().await {
+        results.push(res);
+        if let Some(ref p) = pb {
+            p.inc(1);
+            // Optional: update message with latest target
+            // p.set_message(format!("Scanning... found {}:{}", res.target, res.port));
+        }
+    }
+
+    if let Some(p) = pb {
+        p.finish_with_message("Scan complete!");
+    }
+
+    // Handle outputs
+    match output {
+        OutputFormat::Table => {
+            if results.is_empty() {
+                println!("\n{}", "No open ports found or target is down.".yellow());
+            } else {
+                let mut table = Table::new();
+                table.load_preset(UTF8_FULL)
+                    .set_header(vec![
+                        Cell::new("TARGET").add_attribute(Attribute::Bold).fg(Color::Cyan),
+                        Cell::new("PORT").add_attribute(Attribute::Bold).fg(Color::Cyan),
+                        Cell::new("SERVICE").add_attribute(Attribute::Bold).fg(Color::Cyan),
+                        Cell::new("VERSION & INTELLIGENCE").add_attribute(Attribute::Bold).fg(Color::Cyan),
+                    ]);
+
+                for res in results {
+                    let version_text = if res.version != "unknown" {
+                        format!("{} {}", res.version, format!("(CVE: google.com/search?q={}+{})", res.service, res.version).dimmed())
+                    } else {
+                        "unknown".to_string()
+                    };
+
+                    table.add_row(vec![
+                        Cell::new(&res.target),
+                        Cell::new(&format!("{}/tcp", res.port)).fg(Color::Green),
+                        Cell::new(&res.service).add_attribute(Attribute::Bold),
+                        Cell::new(&version_text),
+                    ]);
+                }
+                println!("\n{}", table);
+            }
+        },
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&results)?);
+        },
+        OutputFormat::Csv => {
+            println!("target,port,state,service,version");
+            for r in results {
+                println!("{},{},{},{},{}", r.target, r.port, r.state, r.service, r.version);
             }
         }
     }
