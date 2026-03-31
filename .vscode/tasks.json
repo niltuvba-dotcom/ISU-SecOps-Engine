@@ -27,7 +27,8 @@
     {
       "label": "Test: All",
       "type": "shell",
-      "command": "cargo nextest run",
+      "command": "cargo",
+      "args": ["test"],
       "group": { "kind": "test", "isDefault": true },
       "problemMatcher": ["$rustc"]
     }
