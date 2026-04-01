@@ -13,8 +13,8 @@
       "type": "lldb",
       "request": "launch",
       "name": "Debug: Main Binary",
-      "program": "${workspaceFolder}/target/debug/secops.exe",
-      "args": [],
+      "program": "${workspaceFolder}/target/debug/secops",
+      "args": ["web"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "Build: Debug"
     },
