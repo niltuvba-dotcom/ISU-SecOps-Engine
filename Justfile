@@ -1,4 +1,4 @@
-# Justfile - Command runner for ISU-SecOps-Engine development
+# Justfile - Command runner for Qicro development
 
 _default:
     @just --list
