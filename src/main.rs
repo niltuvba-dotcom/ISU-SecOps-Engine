@@ -5,19 +5,25 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
+mod database;
 mod fingerprint;
 mod web;
-mod database;
 
+/// The main command line interface structure for the SecOps Engine.
 #[derive(Parser)]
 #[command(name = "secops")]
 #[command(version = "1.3.0")]
-#[command(about = "🛡️ ISU SecOps - Professional Service Fingerprinting Engine", long_about = None)]
+#[command(
+    about = "🛡️ ISU SecOps - Professional Service Fingerprinting Engine",
+    long_about = None
+)]
 struct Cli {
+    /// Subcommand to execute.
     #[command(subcommand)]
     command: Commands,
 }
 
+/// Available subcommands for the SecOps Engine.
 #[derive(Subcommand)]
 enum Commands {
     /// 🕵️ Pentest & Service Fingerprinting
@@ -37,7 +43,7 @@ enum Commands {
         #[arg(short, long, default_value_t = 3)]
         timeout: u64,
 
-        /// Output format
+        /// Output format for results
         #[arg(short, long, value_enum, default_value_t = OutputFormat::Table)]
         output: OutputFormat,
     },
@@ -49,10 +55,14 @@ enum Commands {
     },
 }
 
+/// Supported output formats for terminal results.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputFormat {
+    /// Human-readable UTF-8 table.
     Table,
+    /// JSON for machine processing.
     Json,
+    /// Comma Separated Values.
     Csv,
 }
 
@@ -61,12 +71,23 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Pentest { target, ports, concurrency, timeout, output } => {
+        Commands::Pentest {
+            target,
+            ports,
+            concurrency,
+            timeout,
+            output,
+        } => {
             run_cli_pentest(target, ports, *concurrency, *timeout, *output).await?;
-        },
+        }
         Commands::Web { port } => {
             println!("{}", "🌐 Starting ISU-SecOps Web Dashboard...".cyan().bold());
-            println!("📍 Local address: {}", format!("http://127.0.0.1:{}", port).bright_white().underline());
+            println!(
+                "📍 Local address: {}",
+                format!("http://127.0.0.1:{}", port)
+                    .bright_white()
+                    .underline()
+            );
             if let Err(e) = web::start_server(*port).await {
                 eprintln!("{} {}", "❌ Error:".red().bold(), e);
             }
@@ -76,8 +97,18 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, timeout: u64, output: OutputFormat) -> anyhow::Result<()> {
-    let parsed_ports: Vec<u16> = ports_str.split(',')
+/// Orchestrates the pentest operation for a given target and set of ports from the CLI.
+/// 
+/// It displays a progress bar and renders the final results in the requested format.
+async fn run_cli_pentest(
+    target: &str,
+    ports_str: &str,
+    concurrency: usize,
+    timeout: u64,
+    output: OutputFormat,
+) -> anyhow::Result<()> {
+    let parsed_ports: Vec<u16> = ports_str
+        .split(',')
         .filter_map(|p| p.trim().parse::<u16>().ok())
         .collect();
 
@@ -91,18 +122,20 @@ async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, time
     }
 
     let (tx, mut rx) = mpsc::unbounded_channel();
-    
-    // We need to estimate total tasks for the progress bar
-    // Since we don't have direct access to expand_target's size easily without calling it,
-    // let's just use it twice or refactor later.
+
+    // Expansion for progress bar estimation
     let targets = fingerprint::expand_target(target);
     let total_tasks = targets.len() * parsed_ports.len();
-    
+
     let pb = if output == OutputFormat::Table {
         let p = ProgressBar::new(total_tasks as u64);
-        p.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}")
+        p.set_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}",
+            )
             .unwrap()
-            .progress_chars("#>-"));
+            .progress_chars("#>-"),
+        );
         p.enable_steady_tick(Duration::from_millis(100));
         Some(p)
     } else {
@@ -112,7 +145,8 @@ async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, time
     let t = target.to_string();
     let p_clone = parsed_ports.clone();
     tokio::spawn(async move {
-        let _ = fingerprint::run_fingerprint_streaming(&t, p_clone, concurrency, timeout, tx).await;
+        let _ =
+            fingerprint::run_fingerprint_streaming(&t, p_clone, concurrency, timeout, tx).await;
     });
 
     let mut results = vec![];
@@ -120,8 +154,6 @@ async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, time
         results.push(res);
         if let Some(ref p) = pb {
             p.inc(1);
-            // Optional: update message with latest target
-            // p.set_message(format!("Scanning... found {}:{}", res.target, res.port));
         }
     }
 
@@ -136,17 +168,32 @@ async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, time
                 println!("\n{}", "No open ports found or target is down.".yellow());
             } else {
                 let mut table = Table::new();
-                table.load_preset(UTF8_FULL)
-                    .set_header(vec![
-                        Cell::new("TARGET").add_attribute(Attribute::Bold).fg(Color::Cyan),
-                        Cell::new("PORT").add_attribute(Attribute::Bold).fg(Color::Cyan),
-                        Cell::new("SERVICE").add_attribute(Attribute::Bold).fg(Color::Cyan),
-                        Cell::new("VERSION & INTELLIGENCE").add_attribute(Attribute::Bold).fg(Color::Cyan),
-                    ]);
+                table.load_preset(UTF8_FULL).set_header(vec![
+                    Cell::new("TARGET")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                    Cell::new("PORT")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                    Cell::new("SERVICE")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                    Cell::new("VERSION & INTELLIGENCE")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                ]);
 
                 for res in results {
                     let version_text = if res.version != "unknown" {
-                        format!("{} {}", res.version, format!("(CVE: google.com/search?q={}+{})", res.service, res.version).dimmed())
+                        format!(
+                            "{} {}",
+                            res.version,
+                            format!(
+                                "(CVE: google.com/search?q={}+{})",
+                                res.service, res.version
+                            )
+                            .dimmed()
+                        )
                     } else {
                         "unknown".to_string()
                     };
@@ -160,14 +207,17 @@ async fn run_cli_pentest(target: &str, ports_str: &str, concurrency: usize, time
                 }
                 println!("\n{}", table);
             }
-        },
+        }
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&results)?);
-        },
+        }
         OutputFormat::Csv => {
             println!("target,port,state,service,version");
             for r in results {
-                println!("{},{},{},{},{}", r.target, r.port, r.state, r.service, r.version);
+                println!(
+                    "{},{},{},{},{}",
+                    r.target, r.port, r.state, r.service, r.version
+                );
             }
         }
     }
