@@ -82,7 +82,6 @@ pub async fn fingerprint_port(target: &str, port: u16, timeout_sec: u64) -> anyh
     };
 
     // Phase 2: Banner Grabbing
-    let mut buffer = [0u16; 1]; // Dummy to trigger some responses if needed
     let _ = stream.write_all(b"\r\n").await; // Gentle nudge for some services
     
     let mut banner_buffer = [0u8; 1024];

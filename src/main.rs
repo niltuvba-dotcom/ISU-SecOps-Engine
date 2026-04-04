@@ -131,10 +131,10 @@ async fn run_cli_pentest(
         let p = ProgressBar::new(total_tasks as u64);
         p.set_style(
             ProgressStyle::with_template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}",
+                "{spinner:.magenta} [{elapsed_precise}] [{bar:40.magenta/cyan}] {pos}/{len} ({eta}) {msg}",
             )
             .unwrap()
-            .progress_chars("#>-"),
+            .progress_chars("━╾─"),
         );
         p.enable_steady_tick(Duration::from_millis(100));
         Some(p)
