@@ -71,7 +71,6 @@ async fn scan_handler(Json(payload): Json<ScanRequest>) -> impl IntoResponse {
     let concurrency = payload.concurrency.unwrap_or(100);
     let timeout = payload.timeout.unwrap_or(3);
 
-    // This is the non-streaming version for standard REST
     let (tx, mut rx) = mpsc::unbounded_channel();
     let target_for_scan = payload.target.clone();
     
@@ -84,7 +83,6 @@ async fn scan_handler(Json(payload): Json<ScanRequest>) -> impl IntoResponse {
         results.push(res);
     }
 
-    // Save to history before returning
     let _ = database::save_scan(&payload.target, &results);
 
     (StatusCode::OK, Json(results))
@@ -98,31 +96,34 @@ async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 /// Internal logic for managing a WebSocket connection.
 async fn handle_socket(mut socket: WebSocket) {
     while let Some(Ok(msg)) = socket.next().await {
-        if let Message::Text(text) = msg {
-            if let Ok(req) = serde_json::from_str::<ScanRequest>(&text) {
-                let ports: Vec<u16> = req.ports.split(',')
-                    .filter_map(|p| p.trim().parse::<u16>().ok())
-                    .collect();
+        let req_opt = if let Message::Text(text) = msg {
+            serde_json::from_str::<ScanRequest>(&text).ok()
+        } else {
+            None
+        };
 
-                let (tx, mut rx) = mpsc::unbounded_channel();
-                let target_for_scan = req.target.clone();
-                let target_for_db = req.target.clone();
-                let concurrency = req.concurrency.unwrap_or(100);
-                let timeout = req.timeout.unwrap_or(3);
+        if let Some(req) = req_opt {
+            let (tx, mut rx) = mpsc::unbounded_channel();
+            let ports_vec: Vec<u16> = req.ports.split(',')
+                .filter_map(|p| p.trim().parse::<u16>().ok())
+                .collect();
 
-                tokio::spawn(async move {
-                    let _ = fingerprint::run_fingerprint_streaming(&target_for_scan, ports, concurrency, timeout, tx).await;
-                });
+            let target_for_scan = req.target.clone();
+            let target_for_db = req.target.clone();
+            let concurrency = req.concurrency.unwrap_or(100);
+            let timeout = req.timeout.unwrap_or(3);
 
-                let mut all_results = vec![];
-                while let Some(res) = rx.recv().await {
-                    all_results.push(res.clone());
-                    let _ = socket.send(Message::Text(serde_json::to_string(&res).unwrap())).await;
-                }
-                
-                // Save complete scan to history using the separate clone
-                let _ = database::save_scan(&target_for_db, &all_results);
+            tokio::spawn(async move {
+                let _ = fingerprint::run_fingerprint_streaming(&target_for_scan, ports_vec, concurrency, timeout, tx).await;
+            });
+
+            let mut all_results = vec![];
+            while let Some(res) = rx.recv().await {
+                all_results.push(res.clone());
+                let _ = socket.send(Message::Text(serde_json::to_string(&res).unwrap())).await;
             }
+            
+            let _ = database::save_scan(&target_for_db, &all_results);
         }
     }
 }

@@ -1,7 +1,7 @@
-use rusqlite::{params, Connection};
+use once_cell::sync::Lazy;
+use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use once_cell::sync::Lazy;
 
 use crate::fingerprint;
 
@@ -22,10 +22,10 @@ pub struct ScanHistory {
 }
 
 /// Initializes the SQLite database if it hasn't been already.
-/// 
+///
 /// Creates the `history` table for storing persistent scan results.
 pub fn init_db() -> anyhow::Result<()> {
-    let conn = Connection::open("secops_history.db")?;
+    let conn = Connection::open("aetheris_history.db")?;
     conn.execute(
         "CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +58,9 @@ pub fn save_scan(target: &str, results: &[fingerprint::FingerprintResult]) -> an
 pub fn get_history() -> anyhow::Result<Vec<ScanHistory>> {
     let db = DB_CONN.lock().unwrap();
     if let Some(conn) = db.as_ref() {
-        let mut stmt = conn.prepare("SELECT id, timestamp, target, results FROM history ORDER BY id DESC LIMIT 50")?;
+        let mut stmt = conn.prepare(
+            "SELECT id, timestamp, target, results FROM history ORDER BY id DESC LIMIT 50",
+        )?;
         let history_iter = stmt.query_map([], |row| {
             Ok(ScanHistory {
                 id: row.get(0)?,

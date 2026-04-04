@@ -1,6 +1,6 @@
 # 🧪 Test ve Doğrulama (Testing)
 
-ISU-SecOps-Engine'in kararlılığını ve doğruluğunu garanti altına almak için hazırlanan test prosedürleri aşağıda detaylandırılmıştır.
+Aetheris Engine'in kararlılığını ve doğruluğunu garanti altına almak için hazırlanan test prosedürleri aşağıda detaylandırılmıştır.
 
 ## 1. Birim (Unit) Testleri
 Rust çekirdek motoru ve IP hesaplama algoritmaları için tasarlanan birim testler.

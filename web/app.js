@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `secops_scan_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `aetheris_scan_${new Date().toISOString().slice(0,10)}.json`;
         a.click();
     });
  
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `secops_scan_${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `aetheris_scan_${new Date().toISOString().slice(0,10)}.csv`;
         a.click();
     });
  

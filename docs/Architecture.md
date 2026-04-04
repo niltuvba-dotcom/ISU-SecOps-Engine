@@ -1,6 +1,6 @@
 # 🏛️ Proje Mimarisi (Architecture)
 
-ISU-SecOps-Engine, yüksek eşzamanlılık (High Concurrency) ve gerçek zamanlı veri akışı üzerine inşa edilmiş, katmanlı bir yazılım mimarisine sahiptir.
+Aetheris Engine, yüksek eşzamanlılık (High Concurrency) ve gerçek zamanlı veri akışı üzerine inşa edilmiş, katmanlı bir yazılım mimarisine sahiptir.
 
 ## 1. Backend: Rust Core Motoru
 Uygulamanın kalbi, Rust dilinin güvenli ve asenkron (Tokio) yapısı üzerinde çalışır.
@@ -11,7 +11,7 @@ Uygulamanın kalbi, Rust dilinin güvenli ve asenkron (Tokio) yapısı üzerinde
 - **Veritabanı Katmanı:** `rusqlite` aracılığıyla tarama sonuçları SQLite üzerinde yapılandırılmış bir şema ile saklanır.
 
 ## 2. İletişim: WebSocket Hub
-HTTP API'ların aksine, ISU-SecOps-Engine kesintisiz veri iletimi için WebSockets tercih eder.
+HTTP API'ların aksine, Aetheris Engine kesintisiz veri iletimi için WebSockets tercih eder.
 
 - **Unbounded Channels:** Backend motorundan gelen sonuçlar `mpsc::unbounded_channel` üzerinden WebSocket handler'ına iletilir.
 - **Anlık Akış:** Kullanıcı arayüzü, tarama bitmeden her bulunan açık portu milisaniyeler içinde ekranda görüntüler.

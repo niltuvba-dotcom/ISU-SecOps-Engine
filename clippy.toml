@@ -3,8 +3,8 @@
 disallowed-names = ["foo", "bar", "baz"]
 
 # Complexity thresholds
+# cognitive-complexity is the modern replacement for cyclomatic
 cognitive-complexity-threshold = 30
-cyclomatic-complexity-threshold = 30
 
 # Function limitations
 too-many-arguments-threshold = 8

@@ -9,12 +9,12 @@ mod database;
 mod fingerprint;
 mod web;
 
-/// The main command line interface structure for the SecOps Engine.
+/// The main command line interface structure for the Aetheris Engine.
 #[derive(Parser)]
-#[command(name = "secops")]
-#[command(version = "1.3.0")]
+#[command(name = "aetheris")]
+#[command(version = "1.4.0")]
 #[command(
-    about = "🛡️ ISU SecOps - Professional Service Fingerprinting Engine",
+    about = "🛡️ Aetheris Engine - Professional Service Fingerprinting & Recon Engine",
     long_about = None
 )]
 struct Cli {
@@ -23,7 +23,7 @@ struct Cli {
     command: Commands,
 }
 
-/// Available subcommands for the SecOps Engine.
+/// Available subcommands for the Aetheris Engine.
 #[derive(Subcommand)]
 enum Commands {
     /// 🕵️ Pentest & Service Fingerprinting
@@ -81,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
             run_cli_pentest(target, ports, *concurrency, *timeout, *output).await?;
         }
         Commands::Web { port } => {
-            println!("{}", "🌐 Starting ISU-SecOps Web Dashboard...".cyan().bold());
+            println!("{}", "🌐 Starting Aetheris Web Dashboard...".cyan().bold());
             println!(
                 "📍 Local address: {}",
                 format!("http://127.0.0.1:{}", port)
@@ -117,7 +117,7 @@ async fn run_cli_pentest(
     }
 
     if output == OutputFormat::Table {
-        println!("{}", "\n🛡️ ISU SecOps Security Scan".cyan().bold());
+        println!("{}", "\n🛡️ Aetheris Security Scan".cyan().bold());
         println!("{} {}\n", "Target:".bright_white(), target.yellow());
     }
 
@@ -199,10 +199,10 @@ async fn run_cli_pentest(
                     };
 
                     table.add_row(vec![
-                        Cell::new(&res.target),
-                        Cell::new(&format!("{}/tcp", res.port)).fg(Color::Green),
-                        Cell::new(&res.service).add_attribute(Attribute::Bold),
-                        Cell::new(&version_text),
+                        Cell::new(res.target),
+                        Cell::new(format!("{}/tcp", res.port)).fg(Color::Green),
+                        Cell::new(res.service).add_attribute(Attribute::Bold),
+                        Cell::new(version_text),
                     ]);
                 }
                 println!("\n{}", table);
