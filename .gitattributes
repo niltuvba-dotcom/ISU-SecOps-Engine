@@ -1,0 +1,15 @@
+# Set default behavior for carriage returns
+* text=auto
+
+# Enforce LF for Rust files
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+
+# Exclude generated/vendored folders from GitHub language stats
+web/app.js linguist-generated=true
+Cargo.lock linguist-generated=true
+
+# Binary files
+*.db binary
+*.sqlite binary

@@ -1,8 +1,21 @@
 # 🌌 Aetheris Engine (v1.4.0)
 
+<div align="center">
+  <img src="https://via.placeholder.com/200x80?text=Universite+Logosu" alt="University Logo" width="200" />
+</div>
+
+> **Eğitmen / Danışman:** Dr. İsim Soyisim (Placeholder)  
+> **Proje Kapsamı:** Ağ Güvenliği / SecOps Otomasyon Aracı  
+
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 ![Terminal](https://img.shields.io/badge/CLI-Premium-7000ff?style=for-the-badge)
 ![Security](https://img.shields.io/badge/SecOps-Advanced-00f3ff?style=for-the-badge)
+
+## 📋 İçindekiler (Table of Contents)
+- [Terminal (CLI) Deneyimi](#%EF%B8%8F-terminal-cli-deneyimi)
+- [Sürüm Notları](#-sürüm-notları-v140)
+- [Hızlı Komutlar](#%EF%B8%8F-hızlı-komutlar-justfile)
+- [Kurulum Yönergesi](#-kurulum)
 
 **Aetheris Engine**, profesyonel güvenlik uzmanları için tasarlanmış, **öncelikli olarak terminal (CLI) performansına odaklanan**, yüksek hızlı bir ağ keşif ve servis parmak izi (fingerprinting) asistanıdır. "Specter-Grade" hızı ve modern terminal UX/UI tasarımıyla ağınızdaki görünmez servisleri saniyeler içinde raporlar.
 

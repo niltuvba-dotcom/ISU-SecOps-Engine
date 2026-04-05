@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  aetheris-engine:
+    build: .
+    container_name: aetheris-engine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./secops_history.db:/aetheris_history.db
+    restart: unless-stopped
+    command: ["web", "--port", "8080"]
