@@ -1,10 +1,10 @@
 # 🌌 Aetheris Engine (v1.4.0)
 
 <div align="center">
-  <img src="https://via.placeholder.com/200x80?text=Universite+Logosu" alt="University Logo" width="200" />
+  <img src="https://via.placeholder.com/400x100/ffffff/000000?text=Istinye+Universitesi" alt="İstinye Üniversitesi" width="300" />
 </div>
 
-> **Eğitmen / Danışman:** Dr. İsim Soyisim (Placeholder)  
+> **Eğitmen / Danışman:** Dr. Keyvan Arastesh  
 > **Proje Kapsamı:** Ağ Güvenliği / SecOps Otomasyon Aracı  
 
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
