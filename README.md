@@ -12,12 +12,21 @@
 ![Security](https://img.shields.io/badge/SecOps-Advanced-00f3ff?style=for-the-badge)
 
 ## 📋 İçindekiler (Table of Contents)
+- [🎬 Demo İzle](#-demo-izle)
 - [Terminal (CLI) Deneyimi](#%EF%B8%8F-terminal-cli-deneyimi)
 - [Sürüm Notları](#-sürüm-notları-v140)
 - [Hızlı Komutlar](#%EF%B8%8F-hızlı-komutlar-justfile)
 - [Kurulum Yönergesi](#-kurulum)
 
 **Aetheris Engine**, profesyonel güvenlik uzmanları için tasarlanmış, **öncelikli olarak terminal (CLI) performansına odaklanan**, yüksek hızlı bir ağ keşif ve servis parmak izi (fingerprinting) asistanıdır. "Specter-Grade" hızı ve modern terminal UX/UI tasarımıyla ağınızdaki görünmez servisleri saniyeler içinde raporlar.
+
+---
+
+## 🎬 Demo İzle
+
+Projenin tüm yeteneklerini (Hızlı tarama, servis parmak izi analizi ve modern dashboard simülasyonu) aşağıdaki videodan izleyebilirsiniz:
+
+![Aetheris Engine Professional Demo](./demo/project-demo.webp)
 
 ---
 
