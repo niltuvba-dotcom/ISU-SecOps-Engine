@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aetheris Engine | Professional Demo</title>
+    <link rel="stylesheet" href="../web/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* Simulation specific overrides */
+        .scan-stats.hidden, .scan-analytics.hidden, .progress-bar-container.hidden, #results-container.hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+    </div>
+    
+    <div class="container glass-panel">
+        <header>
+            <div class="logo-container">
+                <svg class="logo-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 22V12" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 12L21 7" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 12L3 7" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="logo-gradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#00f3ff"/>
+                            <stop offset="1" stop-color="#7000ff"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <h1>AETHERIS <span class="accent" style="color:var(--primary)">ENGINE</span></h1>
+            <p>Advanced Service Fingerprinting Dashboard</p>
+        </header>
+
+        <main>
+            <div id="scan-stats" class="scan-stats hidden">
+                <div class="stat-card">
+                    <span class="stat-label">Hosts Scanned</span>
+                    <span id="stat-hosts" class="stat-value">1</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Open Ports</span>
+                    <span id="stat-ports" class="stat-value">4</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Unique Services</span>
+                    <span id="stat-services" class="stat-value">4</span>
+                </div>
+            </div>
+
+            <form id="simulation-form">
+                <div class="input-group">
+                    <label for="target">Target (IP or Domain)</label>
+                    <input type="text" id="target" value="pentest-lab.internal" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Ports (Scan Profile)</label>
+                    <input type="text" id="ports" value="22, 80, 443, 3306, 6379" readonly>
+                </div>
+                <button type="submit" id="btn-scan" class="primary-btn">
+                    <span id="btn-text">Initiate Security Scan</span>
+                    <div id="loader" class="loader hidden"></div>
+                </button>
+            </form>
+
+            <div id="scan-progress-container" class="progress-bar-container hidden">
+                <div class="progress-info">
+                    <span id="progress-text">Analyzing targets...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div id="live-log-status" class="live-log">Initializing engine...</div>
+            </div>
+
+            <div id="results-container" class="hidden">
+                <div class="results-header">
+                    <h2>Scan results for <span id="display-target"></span></h2>
+                    <div class="export-actions">
+                        <button class="secondary-btn">JSON</button>
+                        <button id="btn-pdf" class="secondary-btn">PDF Report</button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Target</th>
+                                <th>Port</th>
+                                <th>State</th>
+                                <th>Service</th>
+                                <th>Version & Intelligence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="history-container" class="history-panel">
+                <h3>Recent Activity</h3>
+                <div class="history-list">
+                    <div class="history-item">
+                        <div class="history-info">
+                            <strong>192.168.1.105</strong>
+                            <span>2 hours ago • 3 ports found</span>
+                        </div>
+                        <button class="view-btn">View</button>
+                    </div>
+                    <div class="history-item">
+                        <div class="history-info">
+                            <strong>prod-web-01.local</strong>
+                            <span>Yesterday • 2 ports found</span>
+                        </div>
+                        <button class="view-btn">View</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const form = document.getElementById('simulation-form');
+        const btnText = document.getElementById('btn-text');
+        const loader = document.getElementById('loader');
+        const progressContainer = document.getElementById('scan-progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const progressPercent = document.getElementById('progress-percent');
+        const liveLog = document.getElementById('live-log-status');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsBody = document.getElementById('results-body');
+        const scanStats = document.getElementById('scan-stats');
+        const displayTarget = document.getElementById('display-target');
+
+        const logs = [
+            "Resolving pentest-lab.internal...",
+            "Target identified as 10.0.5.22",
+            "Starting TCP connect scan on 1024 ports...",
+            "Port 22/tcp matches SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.10",
+            "Port 80/tcp identified as HTTP (Nginx 1.18.0)",
+            "Port 3306/tcp identified as MySQL (MariaDB 10.6.18)",
+            "Port 6379/tcp identified as Redis 6.0.16",
+            "Analyzing service banners for vulnerabilities...",
+            "CVE Intelligence query complete for 4 services.",
+            "Finalizing report generation..."
+        ];
+
+        const results = [
+            { port: 22, svc: 'SSH', ver: 'OpenSSH 8.9p1', cve: 'google.com/search?q=SSH+8.9p1+exploit' },
+            { port: 80, svc: 'HTTP', ver: 'Nginx 1.18.0', cve: 'google.com/search?q=Nginx+1.18.0+vulnerabilities' },
+            { port: 3306, svc: 'MySQL', ver: 'MariaDB 10.6.18', cve: 'google.com/search?q=MariaDB+10.6.18+CVE' },
+            { port: 6379, svc: 'Redis', ver: 'Redis 6.0.16', cve: 'google.com/search?q=Redis+6.0.16+exploit' }
+        ];
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const targetVal = document.getElementById('target').value;
+            displayTarget.textContent = targetVal;
+            
+            btnText.textContent = 'Scanning...';
+            loader.classList.remove('hidden');
+            progressContainer.classList.remove('hidden');
+            
+            let p = 0;
+            let logIdx = 0;
+            const interval = setInterval(() => {
+                p += 2;
+                progressFill.style.width = p + '%';
+                progressPercent.textContent = p + '%';
+                
+                if (p % 10 === 0 && logIdx < logs.length) {
+                    liveLog.textContent = '> ' + logs[logIdx++];
+                }
+                
+                if (p >= 100) {
+                    clearInterval(interval);
+                    btnText.textContent = 'Scan Complete';
+                    loader.classList.add('hidden');
+                    showResults();
+                }
+            }, 50);
+        });
+
+        function showResults() {
+            resultsContainer.classList.remove('hidden');
+            scanStats.classList.remove('hidden');
+            
+            results.forEach((r, i) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>pentest-lab.internal</td>
+                    <td><span style="color:var(--primary)">${r.port}/tcp</span></td>
+                    <td><span class="badge badge-open">OPEN</span></td>
+                    <td><strong>${r.svc}</strong></td>
+                    <td>
+                        <div class="version-wrapper">
+                            <span>${r.ver}</span>
+                            <span style="font-size:0.7rem; color:var(--text-muted); opacity:0.6">(CVE: ${r.cve.split('q=')[1]})</span>
+                        </div>
+                    </td>
+                `;
+                resultsBody.appendChild(row);
+            });
+            
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        document.getElementById('btn-pdf').addEventListener('click', () => {
+            alert("Rapor başarıyla PDF olarak oluşturuldu ve indirildi.");
+        });
+    </script>
+</body>
+</html>
